@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Local Chat</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <h1>Local Chat</h1>
+      <span id="status" class="status">connecting…</span>
+      <button id="clear" class="ghost" type="button">New chat</button>
+    </header>
+
+    <main id="messages" class="messages" aria-live="polite">
+      <div class="empty" id="empty">Ask your local model anything.</div>
+    </main>
+
+    <form id="composer" class="composer">
+      <textarea id="input" rows="1" placeholder="Type a message… (Enter to send, Shift+Enter for newline)" autofocus></textarea>
+      <button id="send" type="submit">Send</button>
+    </form>
+  </div>
+  <script src="/static/app.js"></script>
+</body>
+</html>

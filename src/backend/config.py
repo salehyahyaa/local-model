@@ -1,5 +1,3 @@
-"""App configuration, read from environment variables."""
-
 import os
 from pathlib import Path
 

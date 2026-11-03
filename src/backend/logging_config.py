@@ -1,12 +1,10 @@
-"""Logging setup: console + rotating file in logs/app.log."""
-
 import logging
 import logging.config
 
 from src.backend.config import LOG_DIR, LOG_LEVEL
 
 
-def setup_logging() -> None:
+def setup_logging():
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     logging.config.dictConfig(
         {

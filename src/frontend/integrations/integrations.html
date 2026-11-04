@@ -1,0 +1,131 @@
+<div id="integrations-menu" class="context-menu integrations-menu" hidden>
+  <input id="add-files-input" type="file" multiple hidden />
+  <button id="add-files-button" class="context-menu-item add-files-button" type="button">
+    <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 11.5 12 20a5.5 5.5 0 0 1-7.8-7.8l9-9a3.7 3.7 0 0 1 5.2 5.2l-9 9a1.8 1.8 0 0 1-2.6-2.6L15 6.5"/></svg>
+    <span>Add photos &amp; files</span>
+    <span class="add-files-hint">Upload from computer</span>
+  </button>
+  <div class="integrations-menu-title">Integrations</div>
+  <div id="integrations-list" class="integrations-list"></div>
+  <p id="integrations-message" class="integrations-message" hidden></p>
+  <button id="add-integration-button" class="context-menu-item" type="button">
+    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    <span>Add integration</span>
+  </button>
+</div>
+
+<dialog id="integration-dialog" class="integration-dialog">
+  <form id="integration-form" class="integration-form">
+    <h2>Add integration</h2>
+
+    <div class="segmented" role="radiogroup">
+      <label><input type="radio" name="kind" value="mcp" checked /><span>MCP server</span></label>
+      <label><input type="radio" name="kind" value="api" /><span>Web API</span></label>
+    </div>
+
+    <label class="field">
+      <span>Name</span>
+      <input name="name" type="text" maxlength="60" required />
+    </label>
+
+    <div data-section="mcp">
+      <div class="segmented" role="radiogroup">
+        <label><input type="radio" name="transport" value="http" checked /><span>URL</span></label>
+        <label><input type="radio" name="transport" value="stdio" /><span>Command</span></label>
+      </div>
+
+      <label class="field" data-section="mcp-http">
+        <span>Server URL</span>
+        <input name="mcpUrl" type="url" />
+      </label>
+
+      <div data-section="mcp-stdio">
+        <label class="field">
+          <span>Command</span>
+          <input name="command" type="text" />
+        </label>
+        <label class="field">
+          <span>Arguments</span>
+          <input name="args" type="text" />
+        </label>
+        <label class="field">
+          <span>Environment variables</span>
+          <textarea name="env" rows="3" spellcheck="false"></textarea>
+          <small>One per line as NAME=value. Values are saved to your .env file.</small>
+        </label>
+      </div>
+    </div>
+
+    <div data-section="api">
+      <label class="field">
+        <span>What it does</span>
+        <textarea name="description" rows="2"></textarea>
+        <small>The model reads this to decide when to use it.</small>
+      </label>
+      <div class="field-row">
+        <label class="field method-field">
+          <span>Method</span>
+          <select name="method">
+            <option>GET</option>
+            <option>POST</option>
+            <option>PUT</option>
+            <option>PATCH</option>
+            <option>DELETE</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>URL</span>
+          <input name="apiUrl" type="text" />
+        </label>
+      </div>
+      <label class="field">
+        <span>Parameters</span>
+        <textarea name="parameters" rows="3" spellcheck="false"></textarea>
+        <small>One per line as name: description. Start with * if required. Use {name} in the URL to put a value in the path.</small>
+      </label>
+    </div>
+
+    <div data-section="auth">
+      <label class="field">
+        <span>Login</span>
+        <select name="authType">
+          <option value="none">None</option>
+          <option value="apiKey">API key</option>
+          <option value="basic">Username and password</option>
+        </select>
+        <small>Saved to your system keychain, never to the database or .env.</small>
+      </label>
+      <div data-section="auth-basic" class="field-row">
+        <label class="field">
+          <span>Username</span>
+          <input name="username" type="text" autocomplete="off" />
+        </label>
+        <label class="field">
+          <span>Password</span>
+          <input name="password" type="password" autocomplete="new-password" />
+        </label>
+      </div>
+      <label data-section="auth-api-key" class="field">
+        <span>API key</span>
+        <input name="apiKey" type="password" autocomplete="off" />
+      </label>
+      <div data-section="auth-api-key-header" class="field-row">
+        <label class="field">
+          <span>Header name</span>
+          <input name="authHeader" type="text" value="Authorization" />
+        </label>
+        <label class="field">
+          <span>Key prefix</span>
+          <input name="authPrefix" type="text" value="Bearer " />
+        </label>
+      </div>
+    </div>
+
+    <p id="integration-form-error" class="form-error" hidden></p>
+
+    <div class="dialog-actions">
+      <button id="integration-cancel-button" class="secondary-button" type="button">Cancel</button>
+      <button id="integration-save-button" class="save-button" type="submit">Add</button>
+    </div>
+  </form>
+</dialog>

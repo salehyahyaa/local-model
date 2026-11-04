@@ -1,0 +1,71 @@
+.composer { flex-wrap: wrap; }
+
+.image-attachment {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.image-attachment[hidden],
+.image-preview[hidden],
+.image-drop-overlay[hidden] { display: none; }
+
+.image-preview {
+  display: flex;
+  flex: 0 0 100%;
+  flex-wrap: wrap;
+  gap: 10px;
+  max-height: 190px;
+  overflow-y: auto;
+  padding: 8px 8px 6px 4px;
+}
+
+.image-preview-frame {
+  position: relative;
+  width: 76px;
+  height: 76px;
+}
+
+.image-preview-frame img {
+  width: 100%;
+  height: 100%;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  object-fit: cover;
+}
+
+.image-preview-remove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--text);
+  color: var(--background);
+  cursor: pointer;
+}
+
+.image-drop-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.72);
+  color: #ffffff;
+  font-size: 13px;
+  pointer-events: none;
+}
+
+.image-drop-overlay svg { color: var(--send-button); }
+
+.image-drop-overlay strong { font-size: 18px; }

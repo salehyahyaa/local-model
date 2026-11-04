@@ -1,0 +1,7 @@
+# Install on machines that run the image model:  pip install -r src/backend/models/image_generation/requirements.txt
+accelerate==1.15.0
+diffusers==0.42.1
+pillow==13.0.0
+safetensors==0.8.0
+torch==2.15.0
+transformers==5.22.1

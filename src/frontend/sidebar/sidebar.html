@@ -1,0 +1,49 @@
+<aside id="sidebar" class="sidebar">
+  <div class="sidebar-top">
+    <button id="model-button" class="model-button" type="button" title="Switch model" aria-haspopup="menu" aria-expanded="false">
+      <span id="model-name" class="model-name">Model</span>
+      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+    <div class="sidebar-top-actions">
+      <button id="search-button" class="icon-button" type="button" title="Search chats">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/></svg>
+      </button>
+      <button id="sidebar-toggle-button" class="icon-button" type="button" title="Toggle sidebar (⇧⌘S)">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="3"/><line x1="9" y1="4" x2="9" y2="20"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <input id="search-input" class="search-input" type="text" hidden />
+
+  <button id="new-chat-button" class="sidebar-row" type="button">
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H7a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-4"/><path d="M18.4 3.6a2 2 0 0 1 2.9 2.9L12.5 15.3 9 16l.7-3.5Z"/></svg>
+    <span>New chat</span>
+  </button>
+
+  <div id="pinned-label" class="section-label" hidden>Pinned</div>
+  <nav id="pinned-list" class="chat-list"></nav>
+
+  <div id="recents-label" class="section-label">Recents</div>
+  <nav id="chat-list" class="chat-list"></nav>
+
+  <button id="archive-button" class="sidebar-row archive-button" type="button" title="Archive">
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
+    <span>Archive</span>
+  </button>
+</aside>
+
+<div id="chat-context-menu" class="context-menu" hidden>
+  <button id="rename-chat-button" class="context-menu-item" type="button">
+    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+    <span>Rename</span>
+  </button>
+  <button id="archive-chat-button" class="context-menu-item" type="button">
+    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
+    <span>Move to archive</span>
+  </button>
+  <button id="delete-chat-button" class="context-menu-item delete" type="button">
+    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M6 7l1 13h10l1-13"/><path d="M9 7V4h6v3"/></svg>
+    <span>Delete</span>
+  </button>
+</div>

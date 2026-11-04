@@ -1,0 +1,37 @@
+<div class="main">
+  <header class="topbar">
+    <div></div>
+    <button id="theme-toggle-button" class="icon-button theme-toggle-button" type="button">
+      <svg id="sun-icon" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="4.9" y1="4.9" x2="6.3" y2="6.3"/><line x1="17.7" y1="17.7" x2="19.1" y2="19.1"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/><line x1="4.9" y1="19.1" x2="6.3" y2="17.7"/><line x1="17.7" y1="6.3" x2="19.1" y2="4.9"/></svg>
+      <svg id="moon-icon" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" hidden><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z"/></svg>
+    </button>
+  </header>
+
+  <main id="messages-scroll" class="messages-scroll">
+    <div id="messages" class="messages" aria-live="polite"></div>
+  </main>
+
+
+<!-- include voice/voice.html -->
+
+  <form id="message-form" class="message-form">
+    <div id="composer" class="composer">
+      <button id="add-button" class="add-button" type="button" title="Add photos, files and integrations">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+      <textarea id="message-input" rows="1" placeholder="Ask anything..." autofocus></textarea>
+      <button id="mute-button" class="round-button mute-button" type="button" title="Mute">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 9v2a3 3 0 0 0 5.1 2.1"/><path d="M15 9.3V5a3 3 0 0 0-5.7-1.3"/><path d="M19 11a7 7 0 0 1-1.2 3.9"/><path d="M5 11a7 7 0 0 0 11 5.7"/><line x1="12" y1="18" x2="12" y2="21"/><line x1="3" y1="3" x2="21" y2="21"/></svg>
+      </button>
+      <button id="end-voice-button" class="round-button primary-button end-voice-button" type="button" title="End voice">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+      </button>
+      <button id="voice-button" class="round-button primary-button voice-button" type="button" title="Voice">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="6" y1="10" x2="6" y2="14"/><line x1="10" y1="6" x2="10" y2="18"/><line x1="14" y1="8" x2="14" y2="16"/><line x1="18" y1="10.5" x2="18" y2="13.5"/></svg>
+      </button>
+      <button id="send-button" class="round-button primary-button send-button" type="submit" title="Send">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+      </button>
+    </div>
+  </form>
+</div>

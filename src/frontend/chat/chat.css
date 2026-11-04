@@ -1,0 +1,184 @@
+.main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 42px;
+  padding: 0 10px;
+}
+
+.theme-toggle-button {
+  color: var(--text);
+}
+
+.theme-toggle-button svg[hidden] {
+  display: none;
+}
+
+.messages-scroll {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.messages {
+  max-width: 668px;
+  margin: 0 auto;
+  padding: 20px 24px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.message {
+  font-size: 13px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.message.user {
+  align-self: flex-end;
+  max-width: 70%;
+  padding: 8px 13px;
+  border-radius: 18px;
+  background: var(--user-bubble);
+  color: var(--user-bubble-text);
+}
+
+.message.assistant {
+  align-self: flex-start;
+  max-width: 100%;
+}
+
+.message-image {
+  display: block;
+  max-width: 100%;
+  max-height: 480px;
+  margin-top: 6px;
+  border-radius: 12px;
+}
+
+.message.user .message-image {
+  display: inline-block;
+  max-height: 96px;
+  margin-right: 4px;
+}
+
+.message.pending::after {
+  content: "●";
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse { 50% { opacity: 0.3; } }
+
+.message-form {
+  padding: 0 24px 20px;
+}
+
+.composer {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  max-width: 620px;
+  margin: 0 auto;
+  padding: 6px;
+  border-radius: 22px;
+  background: var(--composer);
+}
+
+#message-input {
+  flex: 1;
+  font-size: 13px;
+  resize: none;
+  max-height: 200px;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  outline: none;
+}
+
+#message-input::placeholder {
+  color: var(--muted-text);
+}
+
+.add-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.add-button:hover { background: var(--hover); }
+
+.round-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.primary-button {
+  background: var(--send-button);
+  color: var(--send-button-icon);
+}
+
+.primary-button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.mute-button {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.mute-button.muted {
+  background: #e5484d;
+  color: #ffffff;
+}
+
+.send-button,
+.mute-button,
+.end-voice-button {
+  display: none;
+}
+
+.composer.has-text .send-button { display: inline-flex; }
+.composer.has-text .voice-button { display: none; }
+
+.composer.voice-active .voice-button,
+.composer.voice-active .send-button {
+  display: none;
+}
+
+.composer.voice-active .mute-button,
+.composer.voice-active .end-voice-button {
+  display: inline-flex;
+}
+
+.tool-note {
+  align-self: flex-start;
+  color: var(--muted-text);
+  font-size: 11.5px;
+}
+
+@media (max-width: 640px) {
+  .messages { padding: 16px; }
+  .message-form { padding: 0 16px 16px; }
+}

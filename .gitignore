@@ -23,3 +23,6 @@ logs/
 .DS_Store
 .idea/
 .vscode/
+
+# Generated images
+data/

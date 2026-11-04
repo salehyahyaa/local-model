@@ -1,0 +1,43 @@
+.voice-orb {
+  display: flex;
+  justify-content: center;
+  padding: 8px 0 14px;
+  perspective: 600px;
+}
+
+.voice-orb[hidden] { display: none; }
+
+.voice-orb-sphere {
+  --level: 0;
+  width: 72px;
+  height: 72px;
+  transform-style: preserve-3d;
+  transform: scale(calc(1 + var(--level) * 0.25));
+  animation: orb-tilt 6s ease-in-out infinite;
+  transition: transform 80ms linear;
+}
+
+.voice-orb-sphere img {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 6px 14px rgba(96, 152, 253, 0.45));
+}
+
+.voice-orb.thinking .voice-orb-sphere { animation: orb-tilt 6s ease-in-out infinite, orb-breathe 1.4s ease-in-out infinite; }
+.voice-orb.speaking .voice-orb-sphere { animation: orb-tilt 6s ease-in-out infinite, orb-speak 0.6s ease-in-out infinite; }
+.voice-orb.muted .voice-orb-sphere { filter: grayscale(0.6) brightness(0.7); }
+
+@keyframes orb-tilt {
+  0%, 100% { rotate: 0deg; translate: 0 0; }
+  25% { rotate: y 18deg; translate: 0 -2px; }
+  50% { rotate: x 12deg; translate: 0 0; }
+  75% { rotate: y -18deg; translate: 0 2px; }
+}
+
+@keyframes orb-breathe {
+  50% { opacity: 0.7; }
+}
+
+@keyframes orb-speak {
+  50% { scale: 1.12; }
+}

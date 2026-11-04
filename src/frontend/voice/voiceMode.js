@@ -3,9 +3,9 @@ import { setVoiceActive } from "../chat/composer.js";
 import { startMicrophone, stopMicrophone } from "./microphone.js";
 import { createSpeechDetector } from "./speechDetector.js";
 import { speak, stopSpeaking } from "./speechOutput.js";
-import { transcribe } from "./speechInput.js";
+import { openSpeechStream } from "./speechInput.js";
 import { sendMessage } from "../chat/conversation.js";
-import { addMessageBubble } from "../chat/messagesView.js";
+import { addMessageBubble, scrollToBottom } from "../chat/messagesView.js";
 
 const voiceButton = document.getElementById("voice-button");
 const muteButton = document.getElementById("mute-button");
@@ -16,10 +16,14 @@ const voiceOrbSphere = voiceOrb.querySelector(".voice-orb-sphere");
 let isActive = false;
 let isMuted = false;
 let voiceState = "idle";
+let speechStream = null;
+let liveBubble = null;
 
 const speechDetector = createSpeechDetector({
   onLevel: (level) => voiceOrbSphere.style.setProperty("--level", level.toFixed(3)),
-  onUtterance: handleUtterance,
+  onSpeechStart: handleSpeechStart,
+  onSpeechChunk: (chunk) => speechStream?.sendAudio(chunk),
+  onSpeechEnd: handleSpeechEnd,
 });
 
 function setVoiceState(newState) {
@@ -28,11 +32,45 @@ function setVoiceState(newState) {
   voiceOrb.classList.toggle("speaking", newState === "speaking");
 }
 
-async function handleUtterance(samples) {
-  if (!isActive || chatStore.isBusy()) return;
+function showLiveText(text) {
+  if (!liveBubble) {
+    liveBubble = addMessageBubble("user", "");
+  }
+  liveBubble.textContent = text;
+  scrollToBottom();
+}
+
+function removeLiveBubble() {
+  liveBubble?.remove();
+  liveBubble = null;
+}
+
+function cancelSpeechStream() {
+  speechStream?.cancel();
+  speechStream = null;
+  removeLiveBubble();
+}
+
+function handleSpeechStart(startingChunks) {
+  speechStream = openSpeechStream({ onText: showLiveText });
+  for (const chunk of startingChunks) {
+    speechStream.sendAudio(chunk);
+  }
+}
+
+async function handleSpeechEnd(hadEnoughSpeech) {
+  if (!hadEnoughSpeech || !isActive || chatStore.isBusy()) {
+    cancelSpeechStream();
+    return;
+  }
   setVoiceState("thinking");
+  const stream = speechStream;
   try {
-    const text = await transcribe(samples);
+    stream.finish();
+    const text = await stream.result;
+    speechStream = null;
+    // sendMessage adds the finished message itself.
+    removeLiveBubble();
     if (text && isActive) {
       const replyText = await sendMessage(text);
       if (replyText && isActive) {
@@ -41,6 +79,7 @@ async function handleUtterance(samples) {
       }
     }
   } catch (error) {
+    cancelSpeechStream();
     addMessageBubble("assistant", error.message);
   }
   if (isActive) {
@@ -73,6 +112,7 @@ function endVoiceMode() {
   isActive = false;
   stopMicrophone();
   stopSpeaking();
+  cancelSpeechStream();
   speechDetector.reset();
   setMuted(false);
   setVoiceState("idle");
@@ -86,6 +126,7 @@ function setMuted(muted) {
   voiceOrb.classList.toggle("muted", muted);
   muteButton.title = muted ? "Unmute" : "Mute";
   if (muted) {
+    cancelSpeechStream();
     speechDetector.reset();
   }
 }

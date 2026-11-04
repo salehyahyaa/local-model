@@ -15,7 +15,7 @@ LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 
 DEEPGRAM_API_KEY = get_secret("DEEPGRAM_API_KEY")
 DEEPGRAM_MODEL = os.getenv("DEEPGRAM_MODEL", "nova-3")
-DEEPGRAM_TIMEOUT = float(os.getenv("DEEPGRAM_TIMEOUT", "120"))
+DEEPGRAM_TIMEOUT = float(os.getenv("DEEPGRAM_TIMEOUT", "30"))
 
 DATABASE_URL = os.getenv("DATABASE_URL", "")  # optional full URL; overrides the settings below
 DATABASE_HOST = os.getenv("DATABASE_HOST", "localhost")

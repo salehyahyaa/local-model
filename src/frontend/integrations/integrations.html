@@ -19,8 +19,8 @@
     <h2>Add integration</h2>
 
     <div class="segmented" role="radiogroup">
-      <label><input type="radio" name="kind" value="mcp" checked /><span>MCP server</span></label>
-      <label><input type="radio" name="kind" value="api" /><span>Web API</span></label>
+      <label><input type="radio" name="kind" value="mcp" checked /><span>Username &amp; password</span></label>
+      <label><input type="radio" name="kind" value="api" /><span>API</span></label>
     </div>
 
     <label class="field">
@@ -29,29 +29,18 @@
     </label>
 
     <div data-section="mcp">
-      <div class="segmented" role="radiogroup">
-        <label><input type="radio" name="transport" value="http" checked /><span>URL</span></label>
-        <label><input type="radio" name="transport" value="stdio" /><span>Command</span></label>
-      </div>
-
-      <label class="field" data-section="mcp-http">
+      <label class="field">
         <span>Server URL</span>
         <input name="mcpUrl" type="url" />
       </label>
-
-      <div data-section="mcp-stdio">
+      <div class="field-row">
         <label class="field">
-          <span>Command</span>
-          <input name="command" type="text" />
+          <span>Username</span>
+          <input name="username" type="text" autocomplete="off" />
         </label>
         <label class="field">
-          <span>Arguments</span>
-          <input name="args" type="text" />
-        </label>
-        <label class="field">
-          <span>Environment variables</span>
-          <textarea name="env" rows="3" spellcheck="false"></textarea>
-          <small>One per line as NAME=value. Values are saved to your .env file.</small>
+          <span>Password</span>
+          <input name="password" type="password" autocomplete="new-password" />
         </label>
       </div>
     </div>
@@ -83,33 +72,12 @@
         <textarea name="parameters" rows="3" spellcheck="false"></textarea>
         <small>One per line as name: description. Start with * if required. Use {name} in the URL to put a value in the path.</small>
       </label>
-    </div>
-
-    <div data-section="auth">
       <label class="field">
-        <span>Login</span>
-        <select name="authType">
-          <option value="none">None</option>
-          <option value="apiKey">API key</option>
-          <option value="basic">Username and password</option>
-        </select>
-        <small>Saved to your system keychain, never to the database or .env.</small>
-      </label>
-      <div data-section="auth-basic" class="field-row">
-        <label class="field">
-          <span>Username</span>
-          <input name="username" type="text" autocomplete="off" />
-        </label>
-        <label class="field">
-          <span>Password</span>
-          <input name="password" type="password" autocomplete="new-password" />
-        </label>
-      </div>
-      <label data-section="auth-api-key" class="field">
         <span>API key</span>
         <input name="apiKey" type="password" autocomplete="off" />
+        <small>Leave blank if this API doesn't need one.</small>
       </label>
-      <div data-section="auth-api-key-header" class="field-row">
+      <div class="field-row">
         <label class="field">
           <span>Header name</span>
           <input name="authHeader" type="text" value="Authorization" />
@@ -120,6 +88,8 @@
         </label>
       </div>
     </div>
+
+    <small class="integration-secrets-note">Logins are saved to your system keychain, never to the database or .env.</small>
 
     <p id="integration-form-error" class="form-error" hidden></p>
 

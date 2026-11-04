@@ -1,3 +1,8 @@
+import asyncio
+import json
+
+import pytest
+from fastapi import WebSocketDisconnect
 from fastapi.testclient import TestClient
 
 from src.backend import db, store, stt
@@ -55,27 +60,112 @@ def test_chat_rejects_missing_body():
     assert response.status_code == 422
 
 
-def test_transcribe_returns_text(monkeypatch):
-    async def fake_transcribe(audio, content_type):
-        assert audio == b"RIFFfake"
-        assert content_type == "audio/wav"
-        return "hello there"
-
-    monkeypatch.setattr(stt, "transcribe", fake_transcribe)
-    response = client.post("/api/transcribe", content=b"RIFFfake", headers={"Content-Type": "audio/wav"})
-    assert response.status_code == 200
-    assert response.json() == {"text": "hello there"}
+def deepgram_result(transcript, is_final):
+    alternatives = [{"transcript": transcript}]
+    return json.dumps({"type": "Results", "is_final": is_final, "channel": {"alternatives": alternatives}})
 
 
-def test_transcribe_rejects_empty_audio():
-    response = client.post("/api/transcribe", content=b"", headers={"Content-Type": "audio/wav"})
-    assert response.status_code == 422
+class FakeDeepgram:
+    """Answers audio with a partial transcript, and CloseStream with the final one, then hangs up."""
+
+    def __init__(self):
+        self.received = []
+        self.replies = asyncio.Queue()
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *error):
+        return False
+
+    async def send(self, data):
+        self.received.append(data)
+        if data == stt.CLOSE_STREAM_MESSAGE:
+            await self.replies.put(json.dumps({"type": "Metadata"}))
+            await self.replies.put(deepgram_result("hello there.", True))
+            await self.replies.put(None)
+        else:
+            await self.replies.put(deepgram_result("hello", False))
+
+    async def close(self):
+        await self.replies.put(None)
+
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self):
+        reply = await self.replies.get()
+        if reply is None:
+            raise StopAsyncIteration
+        return reply
 
 
-def test_transcribe_without_key_returns_503(monkeypatch):
+def use_fake_deepgram(monkeypatch):
+    deepgram = FakeDeepgram()
+    connections = []
+
+    def fake_connect(url, additional_headers, open_timeout):
+        connections.append((url, additional_headers))
+        return deepgram
+
+    monkeypatch.setattr(stt, "DEEPGRAM_API_KEY", "test-key")
+    monkeypatch.setattr(stt, "connect", fake_connect)
+    return deepgram, connections
+
+
+def test_transcribe_stream_sends_words_as_they_are_heard(monkeypatch):
+    deepgram, connections = use_fake_deepgram(monkeypatch)
+    with client.websocket_connect("/api/transcribe/stream") as websocket:
+        websocket.send_bytes(b"\x01\x02")
+        assert websocket.receive_json() == {"text": "hello"}
+        websocket.send_text(stt.FINISH_MESSAGE)
+        assert websocket.receive_json() == {"text": "hello there."}
+        assert websocket.receive_json() == {"done": True, "text": "hello there."}
+
+    assert deepgram.received == [b"\x01\x02", stt.CLOSE_STREAM_MESSAGE]
+    url, headers = connections[0]
+    assert "encoding=linear16" in url and "sample_rate=16000" in url and "interim_results=true" in url
+    assert headers == {"Authorization": "Token test-key"}
+
+
+def test_transcribe_stream_stops_sending_past_the_size_limit(monkeypatch):
+    deepgram, _ = use_fake_deepgram(monkeypatch)
+    monkeypatch.setattr(stt, "MAX_AUDIO_BYTES", 2)
+    with client.websocket_connect("/api/transcribe/stream") as websocket:
+        websocket.send_bytes(b"\x01\x02\x03")
+        assert websocket.receive_json() == {"text": "hello there."}
+        assert websocket.receive_json() == {"done": True, "text": "hello there."}
+
+    assert deepgram.received == [stt.CLOSE_STREAM_MESSAGE]
+
+
+def test_transcribe_stream_without_key_reports_it(monkeypatch):
     monkeypatch.setattr(stt, "DEEPGRAM_API_KEY", "")
-    response = client.post("/api/transcribe", content=b"RIFFfake", headers={"Content-Type": "audio/wav"})
-    assert response.status_code == 503
+    with client.websocket_connect("/api/transcribe/stream") as websocket:
+        assert websocket.receive_json() == {"error": "Speech-to-text is not configured."}
+
+
+def test_transcribe_stream_reports_a_failed_connection(monkeypatch):
+    def failing_connect(url, additional_headers, open_timeout):
+        raise OSError("no network")
+
+    monkeypatch.setattr(stt, "DEEPGRAM_API_KEY", "test-key")
+    monkeypatch.setattr(stt, "connect", failing_connect)
+    with client.websocket_connect("/api/transcribe/stream") as websocket:
+        assert websocket.receive_json() == {"error": "The transcription request failed."}
+
+
+def test_transcribe_stream_rejects_other_websites(monkeypatch):
+    use_fake_deepgram(monkeypatch)
+    with pytest.raises(WebSocketDisconnect):
+        with client.websocket_connect("/api/transcribe/stream", headers={"Origin": "https://evil.example"}):
+            pass
+
+
+def test_transcribe_stream_accepts_its_own_page(monkeypatch):
+    monkeypatch.setattr(stt, "DEEPGRAM_API_KEY", "")
+    with client.websocket_connect("/api/transcribe/stream", headers={"Origin": "http://testserver"}) as websocket:
+        assert "error" in websocket.receive_json()
 
 
 def test_state_without_database_returns_503(monkeypatch):

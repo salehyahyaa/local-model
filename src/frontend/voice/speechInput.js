@@ -1,45 +1,79 @@
-import { SAMPLE_RATE } from "./microphone.js";
+const FINISH_MESSAGE = "finish";
+const STREAM_FAILED_MESSAGE = "The transcription stream failed.";
 
-function encodeWav(samples, sampleRate) {
-  const buffer = new ArrayBuffer(44 + samples.length * 2);
-  const view = new DataView(buffer);
-  const writeText = (offset, text) => {
-    for (let i = 0; i < text.length; i++) view.setUint8(offset + i, text.charCodeAt(i));
-  };
-
-  writeText(0, "RIFF");
-  view.setUint32(4, 36 + samples.length * 2, true);
-  writeText(8, "WAVE");
-  writeText(12, "fmt ");
-  view.setUint32(16, 16, true);
-  view.setUint16(20, 1, true); // PCM
-  view.setUint16(22, 1, true); // mono
-  view.setUint32(24, sampleRate, true);
-  view.setUint32(28, sampleRate * 2, true);
-  view.setUint16(32, 2, true);
-  view.setUint16(34, 16, true);
-  writeText(36, "data");
-  view.setUint32(40, samples.length * 2, true);
-
-  let offset = 44;
-  for (const sample of samples) {
-    const clamped = Math.max(-1, Math.min(1, sample));
-    view.setInt16(offset, clamped < 0 ? clamped * 0x8000 : clamped * 0x7fff, true);
-    offset += 2;
+function toPcm16(samples) {
+  const pcm = new Int16Array(samples.length);
+  for (let i = 0; i < samples.length; i++) {
+    const clamped = Math.max(-1, Math.min(1, samples[i]));
+    pcm[i] = clamped < 0 ? clamped * 0x8000 : clamped * 0x7fff;
   }
-  return new Blob([buffer], { type: "audio/wav" });
+  return pcm.buffer;
 }
 
-export async function transcribe(samples) {
-  const response = await fetch("/api/transcribe", {
-    method: "POST",
-    headers: { "Content-Type": "audio/wav" },
-    body: encodeWav(samples, SAMPLE_RATE),
+/**
+ * Streams one utterance to the backend, which passes it live to Deepgram.
+ * onText(text) runs each time the words heard so far change.
+ * `result` gives the final text. It rejects on failure, and gives "" after cancel().
+ */
+export function openSpeechStream({ onText }) {
+  const protocol = location.protocol === "https:" ? "wss:" : "ws:";
+  const socket = new WebSocket(`${protocol}//${location.host}/api/transcribe/stream`);
+  const waitingToSend = [];
+  let isSettled = false;
+  let settle;
+  let fail;
+
+  const result = new Promise((resolve, reject) => {
+    settle = (text) => {
+      isSettled = true;
+      resolve(text);
+    };
+    fail = (message) => {
+      isSettled = true;
+      reject(new Error(message));
+    };
   });
-  if (!response.ok) {
-    const errorBody = await response.json().catch(() => null);
-    throw new Error(errorBody?.error ?? `Transcription failed (HTTP ${response.status})`);
+  // A failure is reported when the utterance ends, so it mustn't count as unhandled until then.
+  result.catch(() => {});
+
+  function send(data) {
+    if (socket.readyState === WebSocket.OPEN) {
+      socket.send(data);
+    } else if (socket.readyState === WebSocket.CONNECTING) {
+      waitingToSend.push(data);
+    }
   }
-  const { text } = await response.json();
-  return text;
+
+  socket.onopen = () => {
+    for (const data of waitingToSend) {
+      socket.send(data);
+    }
+    waitingToSend.length = 0;
+  };
+
+  socket.onmessage = (event) => {
+    if (isSettled) return;
+    const message = JSON.parse(event.data);
+    if (message.error) {
+      fail(message.error);
+    } else if (message.done) {
+      settle(message.text);
+    } else {
+      onText(message.text);
+    }
+  };
+
+  socket.onclose = () => {
+    if (!isSettled) fail(STREAM_FAILED_MESSAGE);
+  };
+
+  return {
+    result,
+    sendAudio: (samples) => send(toPcm16(samples)),
+    finish: () => send(FINISH_MESSAGE),
+    cancel: () => {
+      if (!isSettled) settle("");
+      socket.close();
+    },
+  };
 }

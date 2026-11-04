@@ -1,8 +1,7 @@
 import logging
-from urllib.parse import unquote
+from urllib.parse import unquote, urlparse
 
-import httpx
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, WebSocket
 from fastapi.responses import FileResponse, JSONResponse
 
 from src.backend import documents, store, stt
@@ -20,7 +19,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api")
 
 NO_MODEL_MESSAGE = "No model is connected."
-MAX_AUDIO_BYTES = 40 * 1024 * 1024  # Fits the 20-minute voice limit in speechDetector.js (16 kHz, 16-bit mono).
+WEBSOCKET_POLICY_VIOLATION = 1008
 MAX_CLIENT_ERROR_CHARACTERS = 4000
 
 
@@ -61,24 +60,25 @@ async def log_client_error(request: Request):
     )
 
 
-@router.post("/transcribe")
-async def transcribe(request: Request):
-    audio = await request.body()
-    if not audio or len(audio) > MAX_AUDIO_BYTES:
-        logger.warning("Rejected transcribe request (%d bytes)", len(audio))
-        return JSONResponse({"error": "Invalid audio"}, status_code=422)
+def is_same_origin(websocket: WebSocket):
+    """WebSockets skip the browser's cross-site protection, so other websites must be turned away here."""
+    origin = websocket.headers.get("origin")
+    return origin is None or urlparse(origin).netloc == websocket.headers.get("host")
 
-    content_type = request.headers.get("content-type", "audio/wav")
+
+@router.websocket("/transcribe/stream")
+async def transcribe_stream(websocket: WebSocket):
+    if not is_same_origin(websocket):
+        logger.warning("Rejected transcription stream from another origin")
+        await websocket.close(code=WEBSOCKET_POLICY_VIOLATION)
+        return
+
+    await websocket.accept()
+    await stt.stream_transcription(websocket)
     try:
-        text = await stt.transcribe(audio, content_type)
-    except stt.TranscriptionUnavailableError as error:
-        logger.warning("Speech-to-text unavailable: %s", error)
-        return JSONResponse({"error": "Speech-to-text is not configured."}, status_code=503)
-    except (httpx.HTTPError, KeyError, ValueError):
-        logger.exception("Transcription request failed")
-        return JSONResponse({"error": "The transcription request failed."}, status_code=502)
-
-    return {"text": text}
+        await websocket.close()
+    except RuntimeError:
+        logger.debug("Browser had already closed the transcription stream")
 
 
 async def read_json(request):

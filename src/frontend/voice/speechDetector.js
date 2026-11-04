@@ -26,22 +26,14 @@ function estimateNoiseFloor(chunks) {
   return levels[Math.floor(levels.length / 4)];
 }
 
-function joinChunks(chunks) {
-  const totalLength = chunks.reduce((total, chunk) => total + chunk.length, 0);
-  const joined = new Float32Array(totalLength);
-  let offset = 0;
-  for (const chunk of chunks) {
-    joined.set(chunk, offset);
-    offset += chunk.length;
-  }
-  return joined;
-}
-
-export function createSpeechDetector({ onLevel, onUtterance }) {
+/**
+ * onSpeechStart(chunks) gets the audio from just before speech began, onSpeechChunk(chunk) each piece
+ * after that, and onSpeechEnd(hadEnoughSpeech) says whether it was real speech or just a noise.
+ */
+export function createSpeechDetector({ onLevel, onSpeechStart, onSpeechChunk, onSpeechEnd }) {
   let noiseFloor = MINIMUM_THRESHOLD / NOISE_MULTIPLIER;
   let isSpeaking = false;
   let preRollChunks = [];
-  let utteranceChunks = [];
   let speechSampleCount = 0;
   let silenceSampleCount = 0;
   let utteranceSampleCount = 0;
@@ -52,7 +44,6 @@ export function createSpeechDetector({ onLevel, onUtterance }) {
   function reset() {
     isSpeaking = false;
     preRollChunks = [];
-    utteranceChunks = [];
     speechSampleCount = 0;
     silenceSampleCount = 0;
     utteranceSampleCount = 0;
@@ -87,11 +78,8 @@ export function createSpeechDetector({ onLevel, onUtterance }) {
 
   function finishUtterance() {
     const hadEnoughSpeech = durationMs(speechSampleCount) >= MINIMUM_SPEECH_MS;
-    const samples = joinChunks(utteranceChunks);
     reset();
-    if (hadEnoughSpeech) {
-      onUtterance(samples);
-    }
+    onSpeechEnd(hadEnoughSpeech);
   }
 
   function process(chunk) {
@@ -108,10 +96,11 @@ export function createSpeechDetector({ onLevel, onUtterance }) {
     if (!isSpeaking) {
       if (isLoud) {
         isSpeaking = true;
-        utteranceChunks = [...preRollChunks, chunk];
-        utteranceSampleCount = utteranceChunks.reduce((total, item) => total + item.length, 0);
+        const startingChunks = [...preRollChunks, chunk];
+        utteranceSampleCount = startingChunks.reduce((total, item) => total + item.length, 0);
         speechSampleCount = chunk.length;
         silenceSampleCount = 0;
+        onSpeechStart(startingChunks);
       } else {
         noiseFloor = noiseFloor * 0.95 + rms * 0.05;
         keepPreRoll(chunk);
@@ -119,7 +108,7 @@ export function createSpeechDetector({ onLevel, onUtterance }) {
       return;
     }
 
-    utteranceChunks.push(chunk);
+    onSpeechChunk(chunk);
     utteranceSampleCount += chunk.length;
     if (isLoud) {
       speechSampleCount += chunk.length;

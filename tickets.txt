@@ -1,1 +1,0 @@
-1. Add Deepgram to audio to convert speech to text

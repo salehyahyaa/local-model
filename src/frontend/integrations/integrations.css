@@ -170,7 +170,8 @@
   margin-top: 8px;
 }
 
-.field small { color: var(--muted-text); }
+.field small,
+.integration-secrets-note { color: var(--muted-text); }
 
 .field-row {
   display: flex;

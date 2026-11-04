@@ -49,7 +49,7 @@ def test_conversations_and_messages(test_database_url, monkeypatch):
     assert conversation["title"] == "Greeting"
     assert conversation["isPinned"] is True
     assert conversation["messages"] == [
-        {"role": "user", "content": "hello", "model": "image-generation", "imageFiles": []}
+        {"role": "user", "content": "hello", "model": "image-generation", "imageFiles": [], "documents": []}
     ]
 
 
@@ -65,8 +65,8 @@ def test_image_exchange_is_saved_in_order(test_database_url, monkeypatch):
     assert missing is None
     assert sorted(files) == ["a.png", "b.png", "c.png", "d.png"]
     assert state["conversations"][0]["messages"] == [
-        {"role": "user", "content": "a cat", "model": "image-generation", "imageFiles": ["a.png", "b.png"]},
-        {"role": "assistant", "content": "", "model": "image-generation", "imageFiles": ["c.png", "d.png"]},
+        {"role": "user", "content": "a cat", "model": "image-generation", "imageFiles": ["a.png", "b.png"], "documents": []},
+        {"role": "assistant", "content": "", "model": "image-generation", "imageFiles": ["c.png", "d.png"], "documents": []},
     ]
 
 

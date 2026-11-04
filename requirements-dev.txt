@@ -1,3 +1,5 @@
 -r requirements.txt
+# The image worker reads uploads with Pillow before it loads anything else. CI never needs the rest of the model's stack.
+pillow==13.0.0
 pytest==8.3.5
 ruff==0.11.8

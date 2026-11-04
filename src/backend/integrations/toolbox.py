@@ -86,6 +86,7 @@ class Toolbox:
         try:
             result = await asyncio.wait_for(tool["handler"](arguments), TOOL_TIMEOUT)
         except asyncio.TimeoutError:
+            logger.warning("Tool %s timed out", tool["label"])
             result = "Error: the tool took too long to answer."
         except (McpError, httpx.HTTPError, OSError) as error:
             logger.warning("Tool %s failed: %s", tool["label"], error)

@@ -1,4 +1,5 @@
 import * as chatStore from "./chatStore.js";
+import { hasAttachedDocuments } from "./attachment.js";
 import { sendMessage } from "./conversation.js";
 
 const messageForm = document.getElementById("message-form");
@@ -31,7 +32,7 @@ export function focusInput() {
 async function handleSubmit(event) {
   event.preventDefault();
   const text = messageInput.value.trim();
-  if (!text || chatStore.isBusy()) return;
+  if ((!text && !hasAttachedDocuments()) || chatStore.isBusy()) return;
 
   messageInput.value = "";
   handleInput();

@@ -1,6 +1,6 @@
 import * as integrationsApi from "./integrationsApi.js";
 import { openIntegrationForm } from "./integrationForm.js";
-import { attachImageFiles } from "../models/modelPicker.js";
+import { attachUserFiles } from "../chat/attachment.js";
 
 const addButton = document.getElementById("add-button");
 const menu = document.getElementById("integrations-menu");
@@ -84,9 +84,6 @@ async function refreshList() {
     return;
   }
   const allIntegrations = [...integrations.mcpServers, ...integrations.apiIntegrations];
-  if (allIntegrations.length === 0) {
-    showMessage("No integrations yet.");
-  }
   for (const integration of allIntegrations) {
     list.appendChild(createIntegrationItem(integration));
   }
@@ -120,7 +117,7 @@ export function setupIntegrationsMenu() {
     addFilesInput.click();
   });
   addFilesInput.addEventListener("change", async () => {
-    await attachImageFiles([...addFilesInput.files]);
+    await attachUserFiles([...addFilesInput.files]);
     addFilesInput.value = "";
   });
 

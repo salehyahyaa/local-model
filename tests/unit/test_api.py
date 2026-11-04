@@ -21,7 +21,8 @@ def test_index_serves_chat_page():
 def test_static_assets():
     assert client.get("/assets/main.js").status_code == 200
     assert client.get("/assets/base.css").status_code == 200
-    assert client.get("/assets/models/imageGeneration/imageGeneration.html").status_code == 200
+    assert client.get("/assets/models/imageGeneration/view.js").status_code == 200
+    assert client.get("/assets/chat/attachment.html").status_code == 200
 
 
 def test_static_files_are_revalidated_by_browsers():

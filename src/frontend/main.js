@@ -9,6 +9,7 @@ import { setupVoiceMode } from "./voice/voiceMode.js";
 import { setupIntegrationsMenu } from "./integrations/integrationsMenu.js";
 import { setupIntegrationForm } from "./integrations/integrationForm.js";
 import { applySelectedModel, setupModelPicker } from "./models/modelPicker.js";
+import { setupImageDrop } from "./chat/attachment.js";
 
 chatStore.subscribe("chatsChanged", renderChatList);
 chatStore.subscribe("activeChatChanged", () => {
@@ -24,6 +25,7 @@ setupVoiceMode();
 setupIntegrationsMenu();
 setupIntegrationForm();
 setupModelPicker();
+setupImageDrop();
 
 let hasShownSaveError = false;
 chatStore.subscribe("saveFailed", (error) => {

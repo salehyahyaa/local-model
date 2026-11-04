@@ -1,6 +1,6 @@
 """Saved conversations, messages and settings for the current user."""
 
-from src.backend import db
+from src.backend import db, documents
 
 CONVERSATION_FIELDS = {"title": "title", "isPinned": "is_pinned", "isArchived": "is_archived"}
 SETTINGS_FIELDS = {
@@ -34,16 +34,23 @@ async def get_state():
             db.user_id,
         )
         message_rows = await connection.fetch(
-            """SELECT m.conversation_id, m.role, m.content, m.model, m.image_files FROM messages m
+            """SELECT m.id, m.conversation_id, m.role, m.content, m.model, m.image_files FROM messages m
                JOIN conversations c ON c.id = m.conversation_id
                WHERE c.user_id = $1 ORDER BY m.id""",
             db.user_id,
         )
+        documents_by_message = await documents.documents_by_message(connection, db.user_id)
 
     messages_by_conversation = {}
     for row in message_rows:
         messages_by_conversation.setdefault(row["conversation_id"], []).append(
-            {"role": row["role"], "content": row["content"], "model": row["model"], "imageFiles": row["image_files"]}
+            {
+                "role": row["role"],
+                "content": row["content"],
+                "model": row["model"],
+                "imageFiles": row["image_files"],
+                "documents": documents_by_message.get(row["id"], []),
+            }
         )
     return {
         "settings": {
@@ -105,6 +112,17 @@ async def add_message(conversation_id, role, content, model=None):
         if message_id is not None:
             await connection.execute("UPDATE conversations SET updated_at = now() WHERE id = $1", conversation_id)
         return message_id
+
+
+async def image_files_of_last_message(conversation_id):
+    pool = db.require_pool()
+    image_files = await pool.fetchval(
+        """SELECT m.image_files FROM messages m JOIN conversations c ON c.id = m.conversation_id
+           WHERE m.conversation_id = $1 AND c.user_id = $2 ORDER BY m.id DESC LIMIT 1""",
+        conversation_id,
+        db.user_id,
+    )
+    return list(image_files or [])
 
 
 async def delete_last_message(conversation_id):

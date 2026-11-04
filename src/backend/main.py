@@ -1,3 +1,4 @@
+import logging
 import re
 from contextlib import asynccontextmanager
 
@@ -6,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from src.backend import db
+from src.backend import db, documents
 from src.backend.config import FRONTEND_DIR
 from src.backend.integration_routes import router as integration_router
 from src.backend.logging_config import setup_logging
@@ -17,12 +18,19 @@ from src.backend.routes import router
 
 setup_logging()
 
+logger = logging.getLogger(__name__)
+
 HTML_INCLUDE = re.compile(r"<!-- include (\S+) -->")
 
 
 @asynccontextmanager
 async def lifespan(app):
     await db.connect()
+    if db.pool is not None:
+        try:
+            await documents.delete_orphaned_files()
+        except Exception:
+            logging.getLogger(__name__).exception("Could not clean up orphaned document files")
     yield
     await db.disconnect()
 
@@ -51,6 +59,7 @@ async def database_unavailable(request, error):
 
 @app.exception_handler(asyncpg.UndefinedTableError)
 async def table_missing(request, error):
+    logger.error("Database table missing on %s %s: %s", request.method, request.url.path, error)
     return JSONResponse({"error": "The database is missing a table. Run the migrations in db/migrations."}, status_code=503)
 
 

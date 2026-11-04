@@ -5,6 +5,7 @@
   --muted-text: #9b9b9b;
   --border: #1f1f1f;
   --hover: #1a1a1a;
+  --menu-hover: #424242;
   --active: #212121;
   --composer: #1c1c1c;
   --user-bubble: #2a3f6b;
@@ -20,6 +21,7 @@
   --muted-text: #6b6b6b;
   --border: #e5e5e5;
   --hover: #ececec;
+  --menu-hover: #e3e3e3;
   --active: #e3e3e3;
   --composer: #f4f4f4;
   --user-bubble: #e8eefb;

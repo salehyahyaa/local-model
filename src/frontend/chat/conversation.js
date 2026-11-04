@@ -1,6 +1,14 @@
 import * as chatStore from "./chatStore.js";
 import { streamChatReply } from "./chatApi.js";
-import { addMessageBubble, addToolNote, scrollToBottom } from "./messagesView.js";
+import {
+  addDocumentCard,
+  addMessageBubble,
+  addToolNote,
+  scrollToBottom,
+  setDocumentCardFailed,
+  setDocumentCardSaved,
+} from "./messagesView.js";
+import { clearAttachedDocuments, readAttachedDocuments } from "./attachment.js";
 import { getSelectedModelId, IMAGE_GENERATION_MODEL_ID } from "../models/modelPicker.js";
 
 export async function sendMessage(text) {
@@ -13,8 +21,14 @@ export async function sendMessage(text) {
   }
 
   chatStore.setBusy(true);
-  chatStore.addMessage(chat, "user", text, model);
-  addMessageBubble("user", text);
+  const documentFiles = readAttachedDocuments();
+  clearAttachedDocuments();
+  const userBubble = addMessageBubble("user", text);
+  if (documentFiles.length > 0) {
+    await saveWithDocuments(chat, text, model, documentFiles, userBubble);
+  } else {
+    chatStore.addMessage(chat, "user", text, model);
+  }
 
   const replyBubble = addMessageBubble("assistant", "");
   replyBubble.classList.add("pending");
@@ -30,11 +44,25 @@ export async function sendMessage(text) {
     chatStore.addMessage(chat, "assistant", replyText, model);
     return replyText;
   } catch (error) {
+    // Your message (and any PDFs) stay saved; only the reply failed.
     replyBubble.textContent = error.message;
-    chatStore.removeLastMessage(chat);
     return null;
   } finally {
     replyBubble.classList.remove("pending");
     chatStore.setBusy(false);
+  }
+}
+
+async function saveWithDocuments(chat, text, model, files, bubble) {
+  const cards = files.map((file) => addDocumentCard(bubble, file.name));
+  try {
+    await chatStore.addMessageWithDocuments(chat, text, model, files, (index, document) =>
+      setDocumentCardSaved(cards[index], document),
+    );
+  } catch (error) {
+    for (const card of cards.filter((card) => card.classList.contains("uploading"))) {
+      setDocumentCardFailed(card);
+    }
+    addMessageBubble("assistant", `Couldn't save the PDF: ${error.message}`);
   }
 }

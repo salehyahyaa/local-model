@@ -9,6 +9,8 @@
   font-size: 13px;
 }
 
+.integrations-menu .context-menu-item:hover { background: var(--menu-hover); }
+
 .add-files-button svg {
   flex-shrink: 0;
   color: var(--muted-text);

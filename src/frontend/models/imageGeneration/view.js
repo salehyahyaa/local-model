@@ -1,7 +1,7 @@
 import * as chatStore from "../../chat/chatStore.js";
 import { addImageToBubble, addMessageBubble } from "../../chat/messagesView.js";
 import { createImages } from "./api.js";
-import { clearAttachedImages, readAttachedImages } from "./attachment.js";
+import { clearAttachedImages, readAttachedImages } from "../../chat/attachment.js";
 
 export async function sendImageMessage(chat, prompt) {
   chatStore.setBusy(true);

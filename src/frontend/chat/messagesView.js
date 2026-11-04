@@ -10,6 +10,9 @@ export function renderMessages() {
     for (const imageFile of message.imageFiles ?? []) {
       addImageToBubble(bubble, `/api/images/${imageFile}`);
     }
+    for (const document of message.documents ?? []) {
+      setDocumentCardSaved(addDocumentCard(bubble, document.fileName), document);
+    }
   }
 }
 
@@ -29,6 +32,45 @@ export function addImageToBubble(bubble, imageUrl) {
   image.alt = "";
   image.addEventListener("load", scrollToBottom, { once: true });
   bubble.appendChild(image);
+}
+
+const documentIconSvg =
+  '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/></svg>';
+
+/** Adds a PDF card to a message bubble. It stays in the "uploading" state until setDocumentCardSaved. */
+export function addDocumentCard(bubble, fileName) {
+  const card = document.createElement("a");
+  card.className = "message-document uploading";
+  card.innerHTML = documentIconSvg;
+  const name = document.createElement("span");
+  name.className = "message-document-name";
+  name.textContent = fileName;
+  const status = document.createElement("span");
+  status.className = "message-document-status";
+  status.textContent = "Uploading…";
+  card.append(name, status);
+  bubble.appendChild(card);
+  scrollToBottom();
+  return card;
+}
+
+export function setDocumentCardSaved(card, savedDocument) {
+  card.classList.remove("uploading");
+  card.href = `/api/documents/${savedDocument.id}`;
+  card.target = "_blank";
+  card.rel = "noopener";
+  card.querySelector(".message-document-status").textContent = `PDF · ${formatSize(savedDocument.sizeBytes)}`;
+}
+
+export function setDocumentCardFailed(card) {
+  card.classList.remove("uploading");
+  card.classList.add("failed");
+  card.querySelector(".message-document-status").textContent = "Not saved";
+}
+
+function formatSize(bytes) {
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 export function addToolNote(label, beforeElement) {

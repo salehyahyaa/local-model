@@ -1,0 +1,66 @@
+Malware protection for uploads: how it works and what it helps with
+====================================================================
+
+Any file someone uploads is a file we didn't write and can't fully trust. The goal is
+simple: never let an uploaded file run, trick the browser, or reach places it shouldn't.
+No single check does that, so we stack several small ones.
+
+What's in place now (PDF uploads)
+---------------------------------
+1. Only PDFs get in.
+   The server refuses anything not sent as application/pdf, before reading it.
+   Helps with: someone renaming setup.exe to notes.pdf and uploading it.
+
+2. We look inside the file, not just at its name.
+   A real PDF starts with "%PDF-" and ends with "%%EOF". If those aren't there, it's rejected.
+   Helps with: disguised programs, scripts or random junk posing as a PDF.
+
+3. Size limit (20 MB).
+   Checked from the request header first, then again on the actual bytes.
+   Helps with: filling up the disk or memory with huge uploads.
+
+4. Safe file names and storage.
+   The original name is cleaned (no "../", no control characters) and is only used for
+   display. On disk, each file gets a random name like 3f9c...e1.pdf in its own folder,
+   readable only by your user (permissions 600/700).
+   Helps with: path tricks that try to write over other files, and other programs on the
+   machine reading your documents.
+
+5. Ownership checks on every request.
+   You can only attach to, or download from, your own messages.
+   Helps with: guessing a document's number to read someone else's file once there are more users.
+
+6. Careful download headers.
+   Files are served as application/pdf with "nosniff", so the browser can't be talked into
+   treating a PDF as a web page or a script.
+   Helps with: an uploaded file running code inside the app's own page.
+
+7. A fingerprint (SHA-256) of every file is saved.
+   Helps with: later checking a file against known-malware lists, and spotting duplicates.
+
+8. Deleting really deletes.
+   Deleting a chat or message removes its database rows (cascade) and the files on disk.
+   At startup, any file on disk that no database row points to is removed.
+   Helps with: private data lingering after you thought it was gone.
+
+The hard parts (challenges)
+---------------------------
+- A valid PDF can still be malicious. PDFs can carry JavaScript, embedded files and
+  "open this on launch" actions. Our checks prove it's a PDF, not that it's harmless.
+- Malware hides. Bad content is often compressed or encoded inside the PDF, so simply
+  searching the bytes for words like /JavaScript misses a lot, and catching it means
+  actually parsing the file.
+- Scanners need constant updates. A real antivirus engine (e.g. ClamAV) only knows threats
+  in its latest signature database, so it needs a background service that keeps updating.
+- False alarms are annoying. Strict rules (e.g. "reject any PDF with form actions") also
+  block lots of normal PDFs, like bank statements and filled-in forms.
+- The weakest point is opening the file. Even a clean server can't protect a PDF viewer
+  with its own bugs, so keeping the browser or PDF reader updated matters too.
+- Deleted isn't instantly erased. Postgres removes deleted rows from every query right away,
+  but the old bytes stay in its files until its cleanup (autovacuum) reuses that space.
+
+Not done yet (options)
+----------------------
+- Scan each upload with ClamAV before saving it (needs a new dependency and a background service).
+- Flag or strip risky PDF features (JavaScript, launch actions, embedded files).
+- Check fingerprints against a known-malware lookup service (sends hashes to a third party).

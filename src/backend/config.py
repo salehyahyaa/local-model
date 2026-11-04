@@ -15,7 +15,7 @@ LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 
 DEEPGRAM_API_KEY = get_secret("DEEPGRAM_API_KEY")
 DEEPGRAM_MODEL = os.getenv("DEEPGRAM_MODEL", "nova-3")
-DEEPGRAM_TIMEOUT = float(os.getenv("DEEPGRAM_TIMEOUT", "30"))
+DEEPGRAM_TIMEOUT = float(os.getenv("DEEPGRAM_TIMEOUT", "120"))
 
 DATABASE_URL = os.getenv("DATABASE_URL", "")  # optional full URL; overrides the settings below
 DATABASE_HOST = os.getenv("DATABASE_HOST", "localhost")
@@ -33,3 +33,6 @@ IMAGE_TIMEOUT = float(os.getenv("IMAGE_TIMEOUT", "1800"))
 
 TOOL_TIMEOUT = float(os.getenv("TOOL_TIMEOUT", "30"))
 MAX_TOOL_RESULT_CHARACTERS = int(os.getenv("MAX_TOOL_RESULT_CHARACTERS", "8000"))
+
+UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", ROOT_DIR / "data" / "uploads"))
+MAX_DOCUMENT_BYTES = int(os.getenv("MAX_DOCUMENT_BYTES", str(20 * 1024 * 1024)))

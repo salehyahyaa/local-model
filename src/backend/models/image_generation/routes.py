@@ -95,7 +95,8 @@ async def run_worker(job):
     if process.returncode == EXIT_INVALID_IMAGE:
         raise InvalidImageError
     if process.returncode != 0:
-        raise GenerationFailedError(errors.decode(errors="replace")[-2000:])
+        # A worker killed for running out of memory leaves no error text, so the exit code is the only clue.
+        raise GenerationFailedError(f"worker exit code {process.returncode}: {errors.decode(errors='replace')[-2000:]}")
 
 
 async def run_one_at_a_time(job):
@@ -180,6 +181,7 @@ async def create_image(conversation_id: int, request: Request):
             return JSONResponse({"error": "Image generation was stopped."}, status_code=499)
         saved = await store.save_exchange(conversation_id, prompt.strip(), input_files, output_files)
     except InvalidImageError:
+        logger.warning("Image worker rejected an unreadable upload")
         store.delete_files(new_files)
         return JSONResponse({"error": "One of those files isn't an image the model can read."}, status_code=422)
     except GenerationFailedError as error:

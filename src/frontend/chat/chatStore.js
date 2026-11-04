@@ -162,7 +162,7 @@ export function togglePin(chatId) {
 }
 
 function titleChatFromFirstMessage(chat, role, content) {
-  if (role === "user" && chat.title === DEFAULT_TITLE) {
+  if (role === "user" && chat.title === DEFAULT_TITLE && content) {
     const title = content.slice(0, 40);
     chat.title = title;
     save(() => stateApi.updateConversation(chat.id, { title }));
@@ -174,6 +174,25 @@ export function addMessage(chat, role, content, model) {
   chat.messages.push({ role, content, model });
   save(() => stateApi.addMessage(chat.id, role, content, model));
   titleChatFromFirstMessage(chat, role, content);
+}
+
+/**
+ * Saves a user message, then uploads its PDFs to it one by one.
+ * onDocumentSaved(index, document) runs as each upload finishes. Throws if the message or an upload fails.
+ */
+export async function addMessageWithDocuments(chat, content, model, files, onDocumentSaved) {
+  const message = { role: "user", content, model, documents: [] };
+  chat.messages.push(message);
+  titleChatFromFirstMessage(chat, "user", content || files[0].name);
+  const saved = await save(() => stateApi.addMessage(chat.id, "user", content, model));
+  if (!saved) {
+    throw new Error("PDFs can't be saved because the database isn't connected.");
+  }
+  for (const [index, file] of files.entries()) {
+    const document = await save(() => stateApi.uploadDocument(saved.id, file));
+    message.documents.push(document);
+    onDocumentSaved(index, document);
+  }
 }
 
 /** For messages the backend already saved, such as an image request and its result. */

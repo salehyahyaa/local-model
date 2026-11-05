@@ -17,12 +17,12 @@ function showMessage(text) {
 
 function confirmationText(program) {
   if (program.isThisApp) {
-    return `Remove ${program.name} from auto-start? It stops now, so this page stops working until you start the app again.`;
+    return `Remove ${program.name} from auto-start? It stops now, so this page stops working until you start the app again. Other programs aren't removed.`;
   }
   return `Remove ${program.name} from auto-start? It stops now and won't start at login.`;
 }
 
-async function removeProgram(program) {
+async function removeProgram(program, item) {
   if (!window.confirm(confirmationText(program))) return;
   try {
     await autostartApi.removeProgram(program.id);
@@ -31,8 +31,13 @@ async function removeProgram(program) {
     return;
   }
   if (program.isThisApp) {
-    list.innerHTML = "";
-    showMessage("The app has stopped and won't start at login.");
+    // The app answers this menu's requests, so the other programs stay listed but can't be changed until it's back.
+    item.remove();
+    for (const button of list.querySelectorAll(".autostart-remove-button")) {
+      button.disabled = true;
+      button.title = "Start the app again to change this";
+    }
+    showMessage(`${program.name} has stopped and won't start at login. Other programs are still set to auto-start.`);
     return;
   }
   await refreshList();
@@ -57,7 +62,7 @@ function createProgramItem(program) {
   removeButton.title = `Remove ${program.name} from auto-start`;
   removeButton.setAttribute("aria-label", removeButton.title);
   removeButton.innerHTML = removeIconSvg;
-  removeButton.addEventListener("click", () => removeProgram(program));
+  removeButton.addEventListener("click", () => removeProgram(program, item));
 
   item.append(details, removeButton);
   return item;

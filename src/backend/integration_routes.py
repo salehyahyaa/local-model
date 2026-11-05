@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 from fastapi import APIRouter, Request
@@ -5,9 +6,11 @@ from fastapi.responses import JSONResponse
 
 from src.backend.integrations import api_store, mcp_store, service
 from src.backend.integrations.errors import DuplicateNameError
+from src.backend.integrations.gmail.mailbox import GmailLoginError
 from src.backend.integrations.validation import (
     validate_api_integration,
     validate_enabled_change,
+    validate_gmail_connection,
     validate_mcp_server,
 )
 
@@ -59,6 +62,24 @@ async def add_api_integration(request: Request):
         return await service.add_api_integration(integration)
     except DuplicateNameError:
         return duplicate_name_response(integration["name"])
+
+
+@router.post("/gmail", status_code=201)
+async def connect_gmail(request: Request):
+    connection, error = validate_gmail_connection(await read_json(request))
+    if error:
+        return error_response(error, 422)
+    try:
+        return await service.connect_gmail(connection)
+    except DuplicateNameError:
+        return error_response("Gmail is already connected. Remove it first to use a different account.", 409)
+    except GmailLoginError:
+        return error_response(
+            "Gmail rejected that. Check the address, and use an app password, not your regular password.", 422
+        )
+    except (OSError, asyncio.TimeoutError):
+        logger.warning("Could not reach Gmail to check the login")
+        return error_response("Couldn't reach Gmail. Check your internet connection and try again.", 502)
 
 
 @router.patch("/{kind}/{integration_id}")

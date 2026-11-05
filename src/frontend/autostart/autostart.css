@@ -67,6 +67,12 @@
 
 .autostart-remove-button:hover { color: #ef4444; }
 
+.autostart-remove-button:disabled {
+  color: var(--muted-text);
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
 .autostart-message {
   margin: 0;
   padding: 5px 10px;

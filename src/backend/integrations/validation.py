@@ -7,6 +7,7 @@ ALLOWED_METHODS = {"GET", "POST", "PUT", "PATCH", "DELETE"}
 IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 HEADER_NAME_PATTERN = re.compile(r"^[A-Za-z0-9-]+$")
 URL_PLACEHOLDER_PATTERN = re.compile(r"\{([A-Za-z_][A-Za-z0-9_]*)\}")
+EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
 def clean_text(value, max_length):
@@ -172,6 +173,18 @@ def validate_api_integration(body):
         "parameters": parameters,
         **auth,
     }, None
+
+
+def validate_gmail_connection(body):
+    if not isinstance(body, dict):
+        return None, "Invalid request."
+    address = body.get("address")
+    if not isinstance(address, str) or not EMAIL_PATTERN.match(address.strip()):
+        return None, "Enter your full Gmail address."
+    password = body.get("appPassword")
+    if not isinstance(password, str) or not password.strip():
+        return None, "Enter your app password."
+    return {"address": address.strip(), "appPassword": password}, None
 
 
 def validate_enabled_change(body):

@@ -12,16 +12,16 @@
     <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
     <span>Add integration</span>
   </button>
+  <button id="add-api-button" class="context-menu-item" type="button">
+    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="8 7 3 12 8 17"/><polyline points="16 7 21 12 16 17"/></svg>
+    <span>Add API</span>
+  </button>
 </div>
 
 <dialog id="integration-dialog" class="integration-dialog">
   <form id="integration-form" class="integration-form">
-    <h2>Add integration</h2>
-
-    <div class="segmented" role="radiogroup">
-      <label><input type="radio" name="kind" value="mcp" checked /><span>Username &amp; password</span></label>
-      <label><input type="radio" name="kind" value="api" /><span>API</span></label>
-    </div>
+    <h2 id="integration-form-title">Add integration</h2>
+    <input type="hidden" name="kind" value="mcp" />
 
     <label class="field">
       <span>Name</span>
@@ -96,6 +96,29 @@
     <div class="dialog-actions">
       <button id="integration-cancel-button" class="secondary-button" type="button">Cancel</button>
       <button id="integration-save-button" class="save-button" type="submit">Add</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="gmail-dialog" class="integration-dialog">
+  <form id="gmail-form" class="integration-form">
+    <h2>Add integration</h2>
+
+    <label class="field">
+      <span>Gmail address</span>
+      <input name="address" type="email" autocomplete="email" required />
+    </label>
+    <label class="field">
+      <span>App password</span>
+      <input name="appPassword" type="password" autocomplete="new-password" required />
+      <small>Don't have one? <a class="gmail-password-link" href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer">Get it from Google</a>. If Google says it's unavailable, turn on 2-Step Verification first.</small>
+    </label>
+
+    <p id="gmail-form-error" class="form-error" hidden></p>
+
+    <div class="dialog-actions">
+      <button id="gmail-cancel-button" class="secondary-button" type="button">Cancel</button>
+      <button id="gmail-connect-button" class="save-button" type="submit">Connect</button>
     </div>
   </form>
 </dialog>

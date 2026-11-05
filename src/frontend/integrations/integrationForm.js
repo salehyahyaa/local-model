@@ -2,6 +2,7 @@ import * as integrationsApi from "./integrationsApi.js";
 
 const dialog = document.getElementById("integration-dialog");
 const form = document.getElementById("integration-form");
+const title = document.getElementById("integration-form-title");
 const errorText = document.getElementById("integration-form-error");
 const cancelButton = document.getElementById("integration-cancel-button");
 const saveButton = document.getElementById("integration-save-button");
@@ -106,9 +107,11 @@ async function handleSubmit(event) {
   }
 }
 
-export function openIntegrationForm(handleSaved) {
+export function openIntegrationForm(handleSaved, kind = "mcp") {
   onSaved = handleSaved;
   form.reset();
+  form.elements.kind.value = kind;
+  title.textContent = kind === "api" ? "Add API" : "Add integration";
   showError("");
   updateVisibleSections();
   dialog.showModal();
@@ -116,7 +119,6 @@ export function openIntegrationForm(handleSaved) {
 }
 
 export function setupIntegrationForm() {
-  form.addEventListener("change", updateVisibleSections);
   form.addEventListener("submit", handleSubmit);
   cancelButton.addEventListener("click", () => dialog.close());
 }

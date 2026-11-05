@@ -42,6 +42,11 @@
 
 .integration-item:hover { background: var(--hover); }
 
+.integration-logo {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
 .integration-details {
   flex: 1;
   min-width: 0;
@@ -133,34 +138,8 @@
 
 .integration-form [hidden] { display: none; }
 
-.segmented {
-  display: flex;
-  gap: 4px;
-  padding: 3px;
-  border-radius: 9px;
-  background: var(--background);
-}
+.gmail-password-link { color: var(--send-button); }
 
-.segmented label {
-  flex: 1;
-  cursor: pointer;
-}
-
-.segmented input {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
-}
-
-.segmented span {
-  display: block;
-  padding: 4px 8px;
-  border-radius: 7px;
-  text-align: center;
-}
-
-.segmented input:checked + span { background: var(--active); }
-.segmented input:focus-visible + span { outline: 2px solid var(--send-button); }
 
 .field {
   display: flex;

@@ -1,13 +1,20 @@
+import asyncio
 import base64
 import logging
+import sys
 
 import asyncpg
 
-from src.backend import db
+from src.backend import config, db
+from src.backend.config import TOOL_TIMEOUT
 from src.backend.integrations import api_store, env_secrets, mcp_store
 from src.backend.integrations.errors import DuplicateNameError
+from src.backend.integrations.gmail import mailbox
 
 logger = logging.getLogger(__name__)
+
+GMAIL_NAME = "Gmail"
+GMAIL_SERVER_ARGS = ["-m", "src.backend.integrations.gmail.server"]
 
 
 def build_auth_headers(integration_name, auth, secrets_to_save):
@@ -64,6 +71,31 @@ async def add_mcp_server(server):
     return public_mcp_server(created)
 
 
+async def connect_gmail(connection):
+    """Checks the login with Gmail first, so a wrong password fails here and not later in a chat."""
+    address = connection["address"]
+    password = mailbox.clean_app_password(connection["appPassword"])
+    await asyncio.wait_for(asyncio.to_thread(mailbox.check_login, address, password), TOOL_TIMEOUT)
+
+    password_secret = env_secrets.secret_name(GMAIL_NAME, "APP_PASSWORD")
+    record = {
+        "name": GMAIL_NAME,
+        "transport": "stdio",
+        "command": sys.executable,
+        "args": GMAIL_SERVER_ARGS,
+        "env": {
+            "GMAIL_ADDRESS": address,
+            "GMAIL_APP_PASSWORD": env_secrets.reference(password_secret),
+            "PYTHONPATH": str(config.ROOT_DIR),
+        },
+    }
+    created = await save_with_secrets(
+        GMAIL_NAME, {password_secret: password}, lambda: mcp_store.create_server(record)
+    )
+    logger.info("Connected Gmail")
+    return public_mcp_server(created)
+
+
 async def add_api_integration(integration):
     secrets_to_save = {}
     record = {
@@ -106,6 +138,16 @@ async def remove_api_integration(integration_id):
 
 
 def public_mcp_server(server):
+    if server["args"] == GMAIL_SERVER_ARGS:
+        return {
+            "id": server["id"],
+            "kind": "mcp",
+            "provider": "gmail",
+            "name": server["name"],
+            "transport": server["transport"],
+            "target": server["env"]["GMAIL_ADDRESS"],
+            "enabled": server["enabled"],
+        }
     if server["transport"] == "http":
         target = server["url"]
     else:

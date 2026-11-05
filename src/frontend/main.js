@@ -12,6 +12,7 @@ import { setupGmailForm } from "./integrations/gmailForm.js";
 import { applySelectedModel, setupModelPicker } from "./models/modelPicker.js";
 import { setupImageDrop } from "./chat/attachment.js";
 import { setupAutostartMenu } from "./autostart/autostartMenu.js";
+import { setupSettingsPanel } from "./settings/settingsPanel.js";
 
 chatStore.subscribe("chatsChanged", renderChatList);
 chatStore.subscribe("activeChatChanged", () => {
@@ -30,6 +31,7 @@ setupGmailForm();
 setupModelPicker();
 setupImageDrop();
 setupAutostartMenu();
+setupSettingsPanel();
 
 let hasShownSaveError = false;
 chatStore.subscribe("saveFailed", (error) => {

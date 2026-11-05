@@ -59,6 +59,7 @@ CREATE TABLE user_settings (
     sidebar_collapsed       BOOLEAN NOT NULL DEFAULT FALSE,
     active_conversation_id  BIGINT REFERENCES conversations (id) ON DELETE SET NULL,
     selected_model          TEXT,
+    system_prompt           TEXT,
     updated_at             TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

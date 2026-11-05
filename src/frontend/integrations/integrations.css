@@ -32,6 +32,18 @@
   overflow-y: auto;
 }
 
+.integrations-add-row {
+  display: flex;
+  gap: 4px;
+  margin-top: 10px;
+}
+
+.integrations-add-row .context-menu-item {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+}
+
 .integration-item {
   display: flex;
   align-items: center;
@@ -186,6 +198,41 @@
   justify-content: flex-end;
   gap: 8px;
   margin-top: 4px;
+}
+
+.approval-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--composer);
+}
+
+.approval-title { font-weight: 600; }
+
+.approval-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.approval-detail-name {
+  color: var(--muted-text);
+  font-size: 12px;
+}
+
+.approval-detail-value {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.approval-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  color: var(--muted-text);
 }
 
 .secondary-button,

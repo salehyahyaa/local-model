@@ -4,6 +4,8 @@ function handleEvent(event, reply, callbacks) {
     callbacks.onText(reply.text);
   } else if (event.type === "tool") {
     callbacks.onToolUse(event.label);
+  } else if (event.type === "approval") {
+    callbacks.onApproval(event);
   } else if (event.type === "error") {
     reply.text += `\n[Error: ${event.message}]`;
     callbacks.onText(reply.text);
@@ -14,7 +16,7 @@ export async function streamChatReply(messages, callbacks) {
   const response = await fetch("/api/chat", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ messages }),
+    body: JSON.stringify({ messages, canApprove: true }),
   });
   if (!response.ok) {
     const errorBody = await response.json().catch(() => null);

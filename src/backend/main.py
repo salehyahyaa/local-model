@@ -11,6 +11,7 @@ from src.backend import db
 from src.backend.attachments import documents
 from src.backend.attachments.routes import router as attachments_router
 from src.backend.autostart.routes import router as autostart_router
+from src.backend.chat.routes import router as chat_router
 from src.backend.config import FRONTEND_DIR
 from src.backend.integration_routes import router as integration_router
 from src.backend.logging_config import setup_logging
@@ -18,6 +19,7 @@ from src.backend.models.image_generation.routes import ExposeConnectionEvents
 from src.backend.models.image_generation.routes import router as image_generation_router
 from src.backend.request_logging import log_requests
 from src.backend.routes import router
+from src.backend.settings_panel.routes import router as settings_panel_router
 
 setup_logging()
 
@@ -51,6 +53,8 @@ async def track_last_accessed(request, call_next):
 app.add_middleware(ExposeConnectionEvents)
 
 app.include_router(router)
+app.include_router(chat_router)
+app.include_router(settings_panel_router)
 app.include_router(attachments_router)
 app.include_router(autostart_router)
 app.include_router(integration_router)

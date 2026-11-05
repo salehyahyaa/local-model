@@ -1,5 +1,6 @@
 import * as chatStore from "./chatStore.js";
 import { streamChatReply } from "./chatApi.js";
+import { addApprovalCard } from "./approvalCard.js";
 import {
   addDocumentCard,
   addMessageBubble,
@@ -40,6 +41,7 @@ export async function sendMessage(text) {
         scrollToBottom();
       },
       onToolUse: (label) => addToolNote(label, replyBubble),
+      onApproval: (approval) => addApprovalCard(approval, replyBubble),
     });
     chatStore.addMessage(chat, "assistant", replyText, model);
     return replyText;

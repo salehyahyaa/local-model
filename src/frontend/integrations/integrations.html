@@ -8,14 +8,16 @@
   <div class="integrations-menu-title">Integrations</div>
   <div id="integrations-list" class="integrations-list"></div>
   <p id="integrations-message" class="integrations-message" hidden></p>
-  <button id="add-integration-button" class="context-menu-item" type="button">
-    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-    <span>Add integration</span>
-  </button>
-  <button id="add-api-button" class="context-menu-item" type="button">
-    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="8 7 3 12 8 17"/><polyline points="16 7 21 12 16 17"/></svg>
-    <span>Add API</span>
-  </button>
+  <div class="integrations-add-row">
+    <button id="add-integration-button" class="context-menu-item" type="button">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      <span>Add integration</span>
+    </button>
+    <button id="add-api-button" class="context-menu-item" type="button">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="8 7 3 12 8 17"/><polyline points="16 7 21 12 16 17"/></svg>
+      <span>Add API</span>
+    </button>
+  </div>
 </div>
 
 <dialog id="integration-dialog" class="integration-dialog">

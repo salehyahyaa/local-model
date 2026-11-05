@@ -1,0 +1,48 @@
+.settings-dialog {
+  width: min(560px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+}
+
+.settings-section-title {
+  margin-top: 10px;
+  color: var(--muted-text);
+}
+
+.settings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.settings-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 2px;
+}
+
+.settings-item-dot {
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--active);
+}
+
+.settings-item-dot.on { background: #22c55e; }
+
+.settings-item-details { min-width: 0; }
+
+.settings-item-detail {
+  color: var(--muted-text);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.settings-empty { color: var(--muted-text); }
+
+.settings-status {
+  margin-right: auto;
+  align-self: center;
+  color: var(--muted-text);
+}

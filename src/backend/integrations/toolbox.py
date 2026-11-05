@@ -47,6 +47,15 @@ def truncate(text):
     return text[:MAX_TOOL_RESULT_CHARACTERS] + "\n[result truncated]"
 
 
+def read_arguments(arguments):
+    if isinstance(arguments, str):
+        try:
+            arguments = json.loads(arguments)
+        except json.JSONDecodeError:
+            return {}
+    return arguments if isinstance(arguments, dict) else {}
+
+
 class Toolbox:
     def __init__(self):
         self.definitions = []
@@ -55,7 +64,15 @@ class Toolbox:
     def has_tools(self):
         return bool(self.definitions)
 
-    def add_tool(self, integration_name, action_name, description, schema, handler):
+    def needs_approval(self, tool_name):
+        tool = self.tools.get(tool_name)
+        return tool is not None and tool["requiresApproval"]
+
+    def label_for(self, tool_name):
+        tool = self.tools.get(tool_name)
+        return tool["label"] if tool else tool_name
+
+    def add_tool(self, integration_name, action_name, description, schema, handler, requires_approval=True):
         tool_name = make_tool_name(integration_name, action_name)
         suffix = 2
         while tool_name in self.tools:
@@ -68,19 +85,17 @@ class Toolbox:
                 "function": {"name": tool_name, "description": description, "parameters": schema or EMPTY_SCHEMA},
             }
         )
-        self.tools[tool_name] = {"label": f"{integration_name} → {action_name}", "handler": handler}
+        self.tools[tool_name] = {
+            "label": f"{integration_name} → {action_name}",
+            "handler": handler,
+            "requiresApproval": requires_approval,
+        }
 
     async def call(self, tool_name, arguments):
         tool = self.tools.get(tool_name)
         if tool is None:
             return tool_name, f"Error: there is no tool called {tool_name}."
-        if isinstance(arguments, str):
-            try:
-                arguments = json.loads(arguments)
-            except json.JSONDecodeError:
-                arguments = {}
-        if not isinstance(arguments, dict):
-            arguments = {}
+        arguments = read_arguments(arguments)
 
         logger.info("Running tool %s", tool["label"])
         try:
@@ -138,6 +153,8 @@ async def open_toolbox(mcp_servers, api_integrations):
                     tool.get("description", ""),
                     tool.get("inputSchema"),
                     make_mcp_handler(session, tool["name"]),
+                    # Only tools that declare themselves read-only skip the owner's approval.
+                    requires_approval=(tool.get("annotations") or {}).get("readOnlyHint") is not True,
                 )
 
         for integration in api_integrations:
@@ -147,6 +164,7 @@ async def open_toolbox(mcp_servers, api_integrations):
                 integration["description"],
                 parameters_to_schema(integration["parameters"]),
                 make_api_handler(integration),
+                requires_approval=integration["method"] != "GET",
             )
 
         yield toolbox

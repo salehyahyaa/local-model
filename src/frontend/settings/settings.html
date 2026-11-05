@@ -1,0 +1,29 @@
+<dialog id="settings-dialog" class="integration-dialog settings-dialog">
+  <form id="settings-form" class="integration-form">
+    <h2>Settings</h2>
+
+    <label class="field">
+      <span>System prompt</span>
+      <textarea id="system-prompt-input" name="systemPrompt" rows="7"></textarea>
+      <small>Sent to the model before every chat. Approval cards stay on whatever this says.</small>
+    </label>
+
+    <p id="settings-error" class="form-error" hidden></p>
+
+    <div class="dialog-actions">
+      <span id="settings-status" class="settings-status"></span>
+      <button id="system-prompt-reset-button" class="secondary-button" type="button">Restore default</button>
+      <button id="system-prompt-save-button" class="save-button" type="submit">Save</button>
+    </div>
+
+    <div class="settings-section-title">Integrations</div>
+    <div id="settings-integrations" class="settings-list"></div>
+
+    <div class="settings-section-title">Connected to the app</div>
+    <div id="settings-services" class="settings-list"></div>
+
+    <div class="dialog-actions">
+      <button id="settings-close-button" class="secondary-button" type="button">Close</button>
+    </div>
+  </form>
+</dialog>

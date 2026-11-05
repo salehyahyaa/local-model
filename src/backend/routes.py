@@ -10,7 +10,6 @@ from src.backend.models.image_generation import store as image_store
 from src.backend.validation import (
     is_valid_message,
     validate_conversation_changes,
-    validate_messages,
     validate_settings_changes,
 )
 
@@ -18,7 +17,6 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api")
 
-NO_MODEL_MESSAGE = "No model is connected."
 WEBSOCKET_POLICY_VIOLATION = 1008
 MAX_CLIENT_ERROR_CHARACTERS = 4000
 
@@ -32,19 +30,6 @@ async def health():
 async def list_models():
     # No model is connected to this app. Add one only with the owner's explicit permission (see CLAUDE.md).
     return {"models": [], "defaultModel": None}
-
-
-@router.post("/chat")
-async def chat(request: Request):
-    try:
-        body = await request.json()
-    except ValueError:
-        body = None
-
-    if validate_messages(body) is None:
-        logger.warning("Rejected invalid chat request")
-        return JSONResponse({"error": "Invalid messages"}, status_code=422)
-    return JSONResponse({"error": NO_MODEL_MESSAGE}, status_code=503)
 
 
 @router.post("/client-errors", status_code=204)

@@ -23,7 +23,8 @@
 .sidebar.collapsed #sidebar-toggle-button { order: 1; margin-bottom: 8px; }
 .sidebar.collapsed #new-chat-button { order: 2; }
 .sidebar.collapsed #search-button { order: 3; }
-.sidebar.collapsed #archive-button { order: 4; }
+.sidebar.collapsed #settings-button { order: 4; }
+.sidebar.collapsed #archive-button { order: 5; }
 
 .archive-button { margin-top: auto; }
 .archive-button.active,

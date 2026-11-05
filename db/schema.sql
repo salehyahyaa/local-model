@@ -47,7 +47,8 @@ CREATE TABLE messages (
     content          TEXT NOT NULL,
     model            TEXT,
     image_files      TEXT[] NOT NULL DEFAULT '{}',
-    created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+    created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+    telegram_message_id  BIGINT  -- only on messages sent from Telegram
 );
 
 CREATE INDEX messages_conversation_id_idx ON messages (conversation_id);
@@ -97,3 +98,25 @@ CREATE TABLE message_documents (
 );
 
 CREATE INDEX message_documents_message_id_idx ON message_documents (message_id);
+
+-- Telegram bot chats use the normal conversations and messages tables; these tables add the Telegram details.
+CREATE TABLE telegram_users (
+    telegram_user_id  BIGINT PRIMARY KEY,  -- the ID Telegram gives the account
+    user_id           BIGINT NOT NULL REFERENCES users (user_id) ON DELETE CASCADE,
+    first_name        TEXT,
+    last_name         TEXT,
+    username          TEXT,
+    created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX telegram_users_user_id_idx ON telegram_users (user_id);
+
+CREATE TABLE telegram_conversations (
+    conversation_id   BIGINT PRIMARY KEY REFERENCES conversations (id) ON DELETE CASCADE,
+    telegram_user_id  BIGINT NOT NULL REFERENCES telegram_users (telegram_user_id) ON DELETE CASCADE,
+    ended_at          TIMESTAMPTZ,  -- set by /new; the next message starts another conversation
+    created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX telegram_conversations_telegram_user_id_idx ON telegram_conversations (telegram_user_id);

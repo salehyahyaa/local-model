@@ -1,0 +1,77 @@
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.more-button {
+  color: var(--text);
+}
+
+.more-menu {
+  width: 280px;
+}
+
+.autostart-button {
+  justify-content: space-between;
+}
+
+.autostart-chevron {
+  flex-shrink: 0;
+  color: var(--muted-text);
+  transition: transform 120ms;
+}
+
+.autostart-button[aria-expanded="true"] .autostart-chevron {
+  transform: rotate(180deg);
+}
+
+.autostart-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.autostart-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 6px 5px 10px;
+  border-radius: 6px;
+}
+
+.autostart-item:hover { background: var(--hover); }
+
+.autostart-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.autostart-status {
+  color: var(--muted-text);
+  font-size: 10.5px;
+}
+
+.autostart-remove-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted-text);
+  cursor: pointer;
+}
+
+.autostart-remove-button:hover { color: #ef4444; }
+
+.autostart-message {
+  margin: 0;
+  padding: 5px 10px;
+  color: var(--muted-text);
+  font-size: 11.5px;
+}
+
+.autostart-message[hidden] { display: none; }

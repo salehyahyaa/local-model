@@ -7,7 +7,10 @@ from fastapi import FastAPI
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from src.backend import db, documents
+from src.backend import db
+from src.backend.attachments import documents
+from src.backend.attachments.routes import router as attachments_router
+from src.backend.autostart.routes import router as autostart_router
 from src.backend.config import FRONTEND_DIR
 from src.backend.integration_routes import router as integration_router
 from src.backend.logging_config import setup_logging
@@ -48,6 +51,8 @@ async def track_last_accessed(request, call_next):
 app.add_middleware(ExposeConnectionEvents)
 
 app.include_router(router)
+app.include_router(attachments_router)
+app.include_router(autostart_router)
 app.include_router(integration_router)
 app.include_router(image_generation_router)
 

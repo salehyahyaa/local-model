@@ -1,0 +1,41 @@
+#DOWNLOAD IMAGE GENERATION MODEL INTRUSSCTIONS 
+
+
+# 1. Create a Python virtual environment
+python3 -m venv ~/hf-env
+
+# 2. Activate the environment
+source ~/hf-env/bin/activate
+
+# 3. Install Hugging Face
+python -m pip install -U huggingface_hub
+
+# 4. Find your SSD's exact name
+ls /Volumes
+
+# 5. Download the model directly to your SSD
+# Replace YOUR_SSD_NAME with the name from Step 4
+hf download Qwen/Qwen-Image-Edit-2509 --local-dir "/Volumes/YOUR_SSD_NAME/Qwen-Image-Edit-2509"
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+- add doordash API
+- Gmail
+- Iphone communation 
+- everyday use model with unresrtive access
+- google camera connection
+- search API(use Tavily) w/ RobhinHood Agnetic credit card to make online orders for you 
+1k free credits recurring every month: 
+┌─────────────────────────┬────────────────────────────────────┐
+│         Action          │              Credits               │
+├─────────────────────────┼────────────────────────────────────┤
+│ Basic search            │ 1                                  │
+├─────────────────────────┼────────────────────────────────────┤
+│ Advanced search         │ 2                                  │
+├─────────────────────────┼────────────────────────────────────┤
+│ Reading pages (extract) │ 1–2 per 5 pages read               │
+├─────────────────────────┼────────────────────────────────────┤
+│ Mapping a site          │ 1–2 per 10 pages                   │
+├─────────────────────────┼────────────────────────────────────┤
+│ Crawling a site         │ Mapping and reading costs combined │
+├─────────────────────────┼────────────────────────────────────┤
+│ Research //dont use     │ 4–250 per request                  │
+└─────────────────────────┴────────────────────────────────────┘

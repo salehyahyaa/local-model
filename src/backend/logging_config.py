@@ -4,7 +4,8 @@ import logging.config
 from src.backend.config import LOG_DIR, LOG_LEVEL
 
 
-def setup_logging():
+def setup_logging(file_name="app.log"):
+    """Each process needs its own file, because two processes rotating the same log file would corrupt it."""
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     logging.config.dictConfig(
         {
@@ -20,7 +21,7 @@ def setup_logging():
                 "file": {
                     "class": "logging.handlers.RotatingFileHandler",
                     "formatter": "default",
-                    "filename": str(LOG_DIR / "app.log"),
+                    "filename": str(LOG_DIR / file_name),
                     "maxBytes": 5_000_000,
                     "backupCount": 3,
                     "encoding": "utf-8",

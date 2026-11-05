@@ -1,6 +1,7 @@
 """Saved conversations, messages and settings for the current user."""
 
-from src.backend import db, documents
+from src.backend import db
+from src.backend.attachments import documents
 
 CONVERSATION_FIELDS = {"title": "title", "isPinned": "is_pinned", "isArchived": "is_archived"}
 SETTINGS_FIELDS = {

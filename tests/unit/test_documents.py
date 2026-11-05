@@ -1,7 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from src.backend import documents
+from src.backend.attachments import documents
 from src.backend.main import app
 
 client = TestClient(app)
@@ -65,7 +65,7 @@ def test_upload_rejects_other_file_types():
 
 
 def test_upload_rejects_oversized_body_before_reading(monkeypatch):
-    import src.backend.routes as routes
+    from src.backend.attachments import routes
 
     monkeypatch.setattr(routes, "MAX_DOCUMENT_BYTES", 5)
     assert upload().status_code == 413

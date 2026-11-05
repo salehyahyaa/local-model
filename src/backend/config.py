@@ -36,3 +36,8 @@ MAX_TOOL_RESULT_CHARACTERS = int(os.getenv("MAX_TOOL_RESULT_CHARACTERS", "8000")
 
 UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", ROOT_DIR / "data" / "uploads"))
 MAX_DOCUMENT_BYTES = int(os.getenv("MAX_DOCUMENT_BYTES", str(20 * 1024 * 1024)))
+
+TELEGRAM_BOT_TOKEN = get_secret("TELEGRAM_BOT_TOKEN")
+TELEGRAM_OWNER_ID = get_secret("TELEGRAM_OWNER_ID")
+TELEGRAM_CHAT_TIMEOUT = float(os.getenv("TELEGRAM_CHAT_TIMEOUT", "1800"))
+APP_URL = os.getenv("APP_URL", "http://127.0.0.1:8000")

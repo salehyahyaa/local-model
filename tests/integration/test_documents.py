@@ -6,7 +6,8 @@ import time
 
 import pytest
 
-from src.backend import db, documents, store
+from src.backend import db, store
+from src.backend.attachments import documents
 
 VALID_PDF = b"%PDF-1.7\n1 0 obj << >> endobj\ntrailer << >>\n%%EOF\n"
 

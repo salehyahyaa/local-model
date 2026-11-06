@@ -37,7 +37,7 @@ export function renderChatList() {
   let pinnedCount = 0;
 
   for (const chat of chatStore.getChats()) {
-    if (searchText && !chat.title.toLowerCase().includes(searchText)) continue;
+    if (searchText && !chatMatchesSearch(chat)) continue;
     if (chat.isArchived !== isShowingArchive) continue;
     const chatListItem = createChatListItem(chat);
     if (chat.isPinned && !isShowingArchive) {
@@ -50,6 +50,13 @@ export function renderChatList() {
 
   pinnedLabel.hidden = pinnedCount === 0;
   recentsLabel.textContent = isShowingArchive ? "Archived" : "Recents";
+}
+
+function chatMatchesSearch(chat) {
+  return (
+    chat.title.toLowerCase().includes(searchText) ||
+    chat.messages.some((message) => message.content?.toLowerCase().includes(searchText))
+  );
 }
 
 function createChatListItem(chat) {

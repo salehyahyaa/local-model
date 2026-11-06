@@ -2,10 +2,16 @@
 
 import asyncio
 import secrets
+from typing import NamedTuple
 
 APPROVAL_TIMEOUT = 600
 
 pending = {}
+
+
+class Answer(NamedTuple):
+    approved: bool
+    follow_up: str | None = None
 
 
 def create():
@@ -15,12 +21,21 @@ def create():
     return approval_id, decision
 
 
-def resolve(approval_id, approved):
+def give_answer(approval_id, answer):
     decision = pending.pop(approval_id, None)
     if decision is None or decision.done():
         return False
-    decision.set_result(approved)
+    decision.set_result(answer)
     return True
+
+
+def resolve(approval_id, approved):
+    return give_answer(approval_id, Answer(approved))
+
+
+def send_follow_up(approval_id, text):
+    """The owner replied instead of tapping a button. A message never approves, whatever it says."""
+    return give_answer(approval_id, Answer(False, text))
 
 
 async def wait(approval_id, decision):
@@ -28,6 +43,6 @@ async def wait(approval_id, decision):
     try:
         return await asyncio.wait_for(decision, APPROVAL_TIMEOUT)
     except asyncio.TimeoutError:
-        return False
+        return Answer(False)
     finally:
         pending.pop(approval_id, None)

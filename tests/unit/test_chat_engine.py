@@ -85,6 +85,49 @@ def tool_results(model):
     return [message["content"] for message in model.seen_messages[-1] if message["role"] == "tool"]
 
 
+def test_model_is_told_what_is_connected_without_any_secrets():
+    gmail = {
+        "id": 1,
+        "name": "Gmail",
+        "transport": "stdio",
+        "args": service.GMAIL_SERVER_ARGS,
+        "env": {"GMAIL_ADDRESS": "me@gmail.com", "GMAIL_APP_PASSWORD": "secret-password"},
+        "enabled": True,
+    }
+    calendar = {
+        "id": 2,
+        "name": "Google Calendar",
+        "transport": "stdio",
+        "args": service.GOOGLE_CALENDAR_SERVER_ARGS,
+        "env": {"GOOGLE_ACCOUNT": "me@gmail.com", "GOOGLE_CLIENT_ID": "secret-id"},
+        "enabled": True,
+    }
+    other = {
+        "id": 3,
+        "name": "Notes",
+        "transport": "http",
+        "url": "https://user@notes.example.com/?key=secret-key",
+        "args": [],
+        "enabled": True,
+    }
+    weather = {"name": "Weather", "url": "https://w.example.com/?key=secret-key"}
+
+    messages = engine.connections_messages([gmail, calendar, other], [weather])
+
+    assert messages == [
+        {
+            "role": "system",
+            "content": (
+                "The owner's connected services: Gmail (me@gmail.com), Google Calendar (me@gmail.com), Notes, Weather."
+            ),
+        }
+    ]
+
+
+def test_nothing_connected_adds_no_message():
+    assert engine.connections_messages([], []) == []
+
+
 def test_plain_reply_streams_text(tools):
     events = run(FakeModel([{"type": "text", "text": "Hel"}, {"type": "text", "text": "lo"}]))
     assert events == [{"type": "text", "text": "Hel"}, {"type": "text", "text": "lo"}]
@@ -242,9 +285,41 @@ def test_approval_answers_work_once():
         approval_id, decision = approvals.create()
         assert approvals.resolve(approval_id, True) is True
         assert approvals.resolve(approval_id, True) is False
-        assert await approvals.wait(approval_id, decision) is True
+        assert await approvals.wait(approval_id, decision) == approvals.Answer(True)
 
     asyncio.run(scenario())
+
+
+async def collect_with_follow_up(events, text):
+    collected = []
+    async for event in events:
+        collected.append(event)
+        if event["type"] == "approval":
+            assert approvals.send_follow_up(event["id"], text)
+    return collected
+
+
+def test_follow_up_cancels_the_action_and_reaches_the_model(tools):
+    """Even a message saying yes must not run anything. Only the Approve button can."""
+    model = FakeModel([tool_call("Gmail__send_email", SEND_ARGUMENTS)], [{"type": "text", "text": "Changed"}])
+
+    events = asyncio.run(collect_with_follow_up(engine.run_chat(USER_MESSAGE, model, True), "yes, send it"))
+
+    assert tools == []
+    assert events[-1] == {"type": "text", "text": "Changed"}
+    assert tool_results(model) == [engine.OWNER_SENT_A_MESSAGE]
+    assert model.seen_messages[-1][-1] == {"role": "user", "content": "yes, send it"}
+
+
+def test_follow_up_also_stops_the_rest_of_that_plan(tools):
+    second_call = {**tool_call("Gmail__search_email"), "id": "second"}
+    model = FakeModel([tool_call("Gmail__send_email", SEND_ARGUMENTS), second_call], [])
+
+    asyncio.run(collect_with_follow_up(engine.run_chat(USER_MESSAGE, model, True), "wait"))
+
+    assert tools == []
+    assert tool_results(model) == [engine.OWNER_SENT_A_MESSAGE, engine.OWNER_SENT_A_MESSAGE]
+    assert model.seen_messages[-1][-1] == {"role": "user", "content": "wait"}
 
 
 def test_no_model_means_no_integrations_are_loaded(monkeypatch):
@@ -285,7 +360,19 @@ def test_chat_route_only_allows_approval_when_the_client_asks(tools, monkeypatch
     assert tools == []
 
 
-@pytest.mark.parametrize("body", [None, {}, {"approved": "yes"}, {"approved": 1}])
+@pytest.mark.parametrize(
+    "body",
+    [
+        None,
+        {},
+        {"approved": "yes"},
+        {"approved": 1},
+        {"followUp": ""},
+        {"followUp": "   "},
+        {"followUp": 5},
+        {"followUp": "go", "approved": True},
+    ],
+)
 def test_invalid_approval_answers_are_rejected(body):
     assert client.post("/api/chat/approvals/x", json=body).status_code == 422
 
@@ -302,7 +389,22 @@ def test_approval_route_answers_a_pending_request():
             response = await async_client.post(f"/api/chat/approvals/{approval_id}", json={"approved": True})
         return response.status_code, decision.result()
 
-    assert asyncio.run(scenario()) == (200, True)
+    assert asyncio.run(scenario()) == (200, approvals.Answer(True))
+
+
+def test_approval_route_takes_a_follow_up_as_a_no():
+    async def scenario():
+        approval_id, decision = approvals.create()
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as async_client:
+            response = await async_client.post(f"/api/chat/approvals/{approval_id}", json={"followUp": " at 7pm "})
+        return response.status_code, decision.result()
+
+    assert asyncio.run(scenario()) == (200, approvals.Answer(False, "at 7pm"))
+
+
+def test_follow_up_to_an_expired_request_returns_404():
+    assert client.post("/api/chat/approvals/unknown", json={"followUp": "x"}).status_code == 404
 
 
 def test_real_gmail_server_only_lets_reading_skip_approval(monkeypatch):

@@ -1,9 +1,11 @@
 import { requestJson } from "../shared/httpClient.js";
 
 export const listIntegrations = () => requestJson("GET", "/api/integrations");
+export const checkIntegrationHealth = () => requestJson("GET", "/api/integrations/health");
 export const addMcpServer = (server) => requestJson("POST", "/api/integrations/mcp", server);
 export const addApiIntegration = (integration) => requestJson("POST", "/api/integrations/api", integration);
 export const connectGmail = (connection) => requestJson("POST", "/api/integrations/gmail", connection);
+export const connectGoogleCalendar = (connection) => requestJson("POST", "/api/integrations/google-calendar", connection);
 export const connectPhoneCalls = (connection) => requestJson("POST", "/api/integrations/phone-calls", connection);
 export const setIntegrationEnabled = (kind, id, enabled) =>
   requestJson("PATCH", `/api/integrations/${kind}/${id}`, { enabled });

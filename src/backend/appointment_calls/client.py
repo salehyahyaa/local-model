@@ -32,6 +32,12 @@ async def get_agent(api_key, agent_id):
     return response.json()
 
 
+async def get_phone_number(api_key, phone_number_id):
+    async with create_client(api_key) as client:
+        response = await client.get(f"/v1/convai/phone-numbers/{phone_number_id}")
+    response.raise_for_status()
+
+
 def uses_only_owner_model(agent):
     """New agents default to a hosted model, and a backup list can hand a call to one. Neither is allowed here."""
     try:

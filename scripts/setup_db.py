@@ -55,26 +55,35 @@ async def quote_literal(connection, value):
     return await connection.fetchval("SELECT quote_literal($1)", value)
 
 
+def quote_ident(name):
+    """Names can't be sent as $1 parameters, so a quote inside one must be escaped by doubling it."""
+    return '"' + name.replace('"', '""') + '"'
+
+
 async def ensure_role(admin, role_name, secret_name):
     """Creates or updates the role with a password, keeping the keychain and the database in sync."""
     password = get_secret(secret_name) or secrets.token_urlsafe(32)
     password_literal = await quote_literal(admin, password)
     exists = await admin.fetchval("SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = $1)", role_name)
     verb = "ALTER" if exists else "CREATE"
-    await admin.execute(f'{verb} ROLE "{role_name}" LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE PASSWORD {password_literal}')
+    await admin.execute(
+        f"{verb} ROLE {quote_ident(role_name)} LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE PASSWORD {password_literal}"
+    )
     set_secret(secret_name, password)
     step(f"Role {role_name} {'updated' if exists else 'created'}; password stored in the keychain")
     return password
 
 
 async def take_ownership(admin):
-    await admin.execute(f'ALTER DATABASE "{DATABASE_NAME}" OWNER TO "{DATABASE_OWNER_USER}"')
-    await admin.execute(f'ALTER SCHEMA public OWNER TO "{DATABASE_OWNER_USER}"')
+    database = quote_ident(DATABASE_NAME)
+    db_owner = quote_ident(DATABASE_OWNER_USER)
+    await admin.execute(f"ALTER DATABASE {database} OWNER TO {db_owner}")
+    await admin.execute(f"ALTER SCHEMA public OWNER TO {db_owner}")
     tables = await admin.fetch("SELECT tablename FROM pg_tables WHERE schemaname = 'public'")
     for table in tables:
-        await admin.execute(f'ALTER TABLE public."{table["tablename"]}" OWNER TO "{DATABASE_OWNER_USER}"')
-    await admin.execute(f'REVOKE ALL ON DATABASE "{DATABASE_NAME}" FROM PUBLIC')
-    await admin.execute(f'GRANT CONNECT ON DATABASE "{DATABASE_NAME}" TO "{DATABASE_USER}"')
+        await admin.execute(f"ALTER TABLE public.{quote_ident(table['tablename'])} OWNER TO {db_owner}")
+    await admin.execute(f"REVOKE ALL ON DATABASE {database} FROM PUBLIC")
+    await admin.execute(f"GRANT CONNECT ON DATABASE {database} TO {quote_ident(DATABASE_USER)}")
     await admin.execute("REVOKE ALL ON SCHEMA public FROM PUBLIC")
     step(f"{len(tables)} existing table(s) now owned by {DATABASE_OWNER_USER}; public access revoked")
 
@@ -90,7 +99,7 @@ async def record_already_applied(owner):
 
 
 async def grant_app_access(owner):
-    app = f'"{DATABASE_USER}"'
+    app = quote_ident(DATABASE_USER)
     await owner.execute(f"GRANT USAGE ON SCHEMA public TO {app}")
     await owner.execute(f"GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO {app}")
     await owner.execute(f"GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO {app}")

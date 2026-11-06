@@ -1,11 +1,12 @@
 import asyncio
 import os
 
+import httpx
 import pytest
 
 from src.backend import config
-from src.backend.integrations import api_store, mcp_store, service, toolbox
-from src.backend.integrations.errors import DuplicateNameError
+from src.backend.integrations import api_client, api_store, mcp_store, service, toolbox
+from src.backend.integrations.errors import DuplicateNameError, LoginNotConfirmed
 
 
 @pytest.fixture
@@ -119,14 +120,83 @@ def test_remove_deletes_secrets(env_file, fake_stores):
     assert asyncio.run(service.remove_mcp_server(1)) is False
 
 
-def test_api_integration_round_trip(env_file, fake_stores):
-    integration = {"name": "Weather", "description": "Weather", "method": "GET", "url": "https://w.example.com",
+API_INTEGRATION = {"name": "Weather", "description": "Weather", "method": "GET", "url": "https://w.example.com",
                    "parameters": [], "apiKey": "w-key", "authHeader": "X-Api-Key", "authPrefix": ""}
-    created = asyncio.run(service.add_api_integration(integration))
+
+
+def fake_login_check(monkeypatch, error=None):
+    seen = []
+
+    async def check_login(record, timeout):
+        seen.append(record)
+        if error:
+            raise error
+
+    monkeypatch.setattr(api_client, "check_login", check_login)
+    return seen
+
+
+def test_api_integration_round_trip(env_file, fake_stores, monkeypatch):
+    seen = fake_login_check(monkeypatch)
+    created = asyncio.run(service.add_api_integration(API_INTEGRATION))
     assert created["kind"] == "api"
+    assert len(seen) == 1
     assert fake_stores["api"][0]["headers"] == {"X-Api-Key": "${INTEGRATION_WEATHER_API_KEY}"}
     asyncio.run(service.remove_api_integration(created["id"]))
     assert stored_secrets() == {}
+
+
+def test_rejected_api_login_saves_nothing(env_file, fake_stores, monkeypatch):
+    fake_login_check(monkeypatch, LoginNotConfirmed("rejected"))
+    with pytest.raises(LoginNotConfirmed):
+        asyncio.run(service.add_api_integration(API_INTEGRATION))
+    assert fake_stores["api"] == []
+    assert stored_secrets() == {}
+
+
+def test_api_without_a_login_has_nothing_to_check(env_file, fake_stores, monkeypatch):
+    seen = fake_login_check(monkeypatch)
+    integration = {key: value for key, value in API_INTEGRATION.items() if key != "apiKey"}
+    asyncio.run(service.add_api_integration(integration))
+    assert seen == []
+    assert len(fake_stores["api"]) == 1
+
+
+def check_login_against(method, handler):
+    record = {"name": "Orders", "method": method, "url": "https://o.example.com/{order}", "parameters": [],
+              "headers": {}}
+    return asyncio.run(api_client.check_login(record, 5, transport=httpx.MockTransport(handler)))
+
+
+@pytest.mark.parametrize("status", [200, 204, 400, 422, 429])
+def test_login_passes_when_the_service_accepts_it(status):
+    check_login_against("GET", lambda request: httpx.Response(status))
+
+
+@pytest.mark.parametrize("status", [301, 401, 403, 404, 405, 500, 503])
+def test_login_fails_unless_the_service_accepts_it(status):
+    with pytest.raises(LoginNotConfirmed):
+        check_login_against("GET", lambda request: httpx.Response(status))
+
+
+def test_login_fails_when_the_service_cannot_be_reached():
+    def handler(request):
+        raise httpx.ConnectError("down")
+
+    with pytest.raises(LoginNotConfirmed):
+        check_login_against("GET", handler)
+
+
+@pytest.mark.parametrize("method", ["POST", "PUT", "PATCH", "DELETE"])
+def test_login_check_never_sends_a_real_action(method):
+    seen = []
+
+    def handler(request):
+        seen.append((request.method, request.content))
+        return httpx.Response(200)
+
+    check_login_against(method, handler)
+    assert seen == [("HEAD", b"")]
 
 
 def test_username_and_password_become_basic_auth(env_file, fake_stores):

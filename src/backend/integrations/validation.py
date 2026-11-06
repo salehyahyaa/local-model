@@ -191,6 +191,18 @@ def validate_api_integration(body):
     }, None
 
 
+def validate_google_calendar_connection(body):
+    if not isinstance(body, dict):
+        return None, "Invalid request."
+    client_id = body.get("clientId")
+    if not isinstance(client_id, str) or not client_id.strip().endswith(".apps.googleusercontent.com"):
+        return None, "Enter the client ID from Google. It ends in .apps.googleusercontent.com."
+    client_secret = body.get("clientSecret")
+    if not isinstance(client_secret, str) or not client_secret.strip():
+        return None, "Enter the client secret from Google."
+    return {"clientId": client_id.strip(), "clientSecret": client_secret.strip()}, None
+
+
 def validate_gmail_connection(body):
     if not isinstance(body, dict):
         return None, "Invalid request."

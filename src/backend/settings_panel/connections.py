@@ -23,7 +23,6 @@ def telegram_status():
     parts = ["Running" if is_running else "Not running"]
     if autostart.plist_path(TELEGRAM_LABEL).exists():
         parts.append("starts at login")
-    parts.append("can't approve actions")
     return {"name": "Telegram bot", "detail": " · ".join(parts), "isConnected": is_running}
 
 

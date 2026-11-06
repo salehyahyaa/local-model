@@ -41,7 +41,7 @@ async def connect_phone_calls(request: Request):
         return error_response(error, 422)
     try:
         return await connection.connect(settings)
-    except connection.AgentNotAllowed as problem:
+    except (connection.AgentNotAllowed, connection.PhoneNumberNotFound) as problem:
         return error_response(str(problem), 422)
     except DuplicateNameError:
         return error_response("Phone calls are already connected. Remove them first to change the settings.", 409)

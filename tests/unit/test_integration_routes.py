@@ -1,8 +1,14 @@
+import asyncio
+
+import httpx
 from fastapi.testclient import TestClient
 
 from src.backend import db, integration_routes
-from src.backend.integrations import mcp_store, service
-from src.backend.integrations.errors import DuplicateNameError, McpError
+from src.backend.appointment_calls import client as calls_client
+from src.backend.appointment_calls import connection as phone_calls
+from src.backend.integrations import api_client, api_store, env_secrets, mcp_store, oauth, service, toolbox
+from src.backend.integrations.errors import DuplicateNameError, LoginNotConfirmed, McpError
+from src.backend.integrations.gmail import mailbox
 from src.backend.main import app
 
 client = TestClient(app)
@@ -12,6 +18,152 @@ def test_list_without_database_returns_503(monkeypatch):
     monkeypatch.setattr(db, "pool", None)
     response = client.get("/api/integrations")
     assert response.status_code == 503
+
+
+def fake_saved_integrations(monkeypatch, servers=(), apis=()):
+    async def list_servers():
+        return list(servers)
+
+    async def list_apis():
+        return list(apis)
+
+    monkeypatch.setattr(mcp_store, "list_servers", list_servers)
+    monkeypatch.setattr(api_store, "list_integrations", list_apis)
+
+
+async def no_phone_connection():
+    return []
+
+
+def saved_server(**changes):
+    return {"id": 1, "name": "Git", "enabled": True, "args": [], "transport": "http", **changes}
+
+
+GMAIL_SERVER = saved_server(
+    id=2, args=service.GMAIL_SERVER_ARGS, env={"GMAIL_ADDRESS": "a@gmail.com", "GMAIL_APP_PASSWORD": "pw"}
+)
+
+
+def health(monkeypatch):
+    monkeypatch.setattr(phone_calls, "check_health", no_phone_connection)
+    return client.get("/api/integrations/health").json()["integrations"]
+
+
+def test_broken_mcp_server_reports_its_problem(monkeypatch):
+    fake_saved_integrations(monkeypatch, [saved_server()])
+
+    async def refresh(server):
+        return None
+
+    async def broken(server):
+        raise McpError("Server answered HTTP 401. Check the login type and details.")
+
+    monkeypatch.setattr(oauth, "refresh_if_needed", refresh)
+    monkeypatch.setattr(toolbox, "check_connection", broken)
+    assert health(monkeypatch) == [
+        {"kind": "mcp", "id": 1, "problem": "Server answered HTTP 401. Check the login type and details."}
+    ]
+
+
+def test_gmail_is_checked_by_really_signing_in(monkeypatch):
+    fake_saved_integrations(monkeypatch, [GMAIL_SERVER])
+    monkeypatch.setattr(env_secrets, "resolve_mapping", lambda mapping: mapping)
+
+    def rejected(address, password):
+        raise mailbox.GmailLoginError("rejected")
+
+    monkeypatch.setattr(mailbox, "check_login", rejected)
+    assert health(monkeypatch) == [{"kind": "mcp", "id": 2, "problem": "Gmail rejected the app password."}]
+
+
+def test_working_gmail_has_no_problem(monkeypatch):
+    fake_saved_integrations(monkeypatch, [GMAIL_SERVER])
+    monkeypatch.setattr(env_secrets, "resolve_mapping", lambda mapping: mapping)
+    monkeypatch.setattr(mailbox, "check_login", lambda address, password: None)
+    assert health(monkeypatch) == [{"kind": "mcp", "id": 2, "problem": None}]
+
+
+def test_turned_off_connections_are_not_contacted(monkeypatch):
+    fake_saved_integrations(monkeypatch, [saved_server(enabled=False)], [{"id": 3, "enabled": False, "headers": {"a": "b"}}])
+    assert health(monkeypatch) == []
+
+
+def test_api_login_failure_is_reported_and_no_login_is_not_checked(monkeypatch):
+    fake_saved_integrations(
+        monkeypatch,
+        apis=[{"id": 3, "enabled": True, "headers": {"X-Key": "k"}}, {"id": 4, "enabled": True, "headers": {}}],
+    )
+
+    async def rejected(integration, timeout):
+        raise LoginNotConfirmed("That service rejected the login (HTTP 401).")
+
+    monkeypatch.setattr(api_client, "check_login", rejected)
+    assert health(monkeypatch) == [
+        {"kind": "api", "id": 3, "problem": "That service rejected the login (HTTP 401)."},
+        {"kind": "api", "id": 4, "problem": None},
+    ]
+
+
+def test_one_unexpected_failure_does_not_stop_the_other_checks(monkeypatch):
+    fake_saved_integrations(monkeypatch, [saved_server(), saved_server(id=5)])
+
+    async def refresh(server):
+        return None
+
+    async def check(server):
+        if server["id"] == 1:
+            raise RuntimeError("secret detail")
+
+    monkeypatch.setattr(oauth, "refresh_if_needed", refresh)
+    monkeypatch.setattr(toolbox, "check_connection", check)
+    assert health(monkeypatch) == [
+        {"kind": "mcp", "id": 1, "problem": "Couldn't check this connection."},
+        {"kind": "mcp", "id": 5, "problem": None},
+    ]
+
+
+def phone_check(monkeypatch, api_key="key", settings=None, get_agent_error=None):
+    saved = settings if settings is not None else {"id": 9, "enabled": True, "agent_id": "a", "phone_number_id": "p"}
+
+    async def load_connection():
+        return saved or None
+
+    async def get_agent(key, agent_id):
+        if get_agent_error:
+            raise get_agent_error
+        return {"conversation_config": {"agent": {"prompt": {"llm": "custom-llm"}}}}
+
+    async def get_phone_number(key, phone_number_id):
+        return None
+
+    monkeypatch.setattr(phone_calls, "load_connection", load_connection)
+    monkeypatch.setattr(phone_calls, "get_api_key", lambda: api_key)
+    monkeypatch.setattr(calls_client, "get_agent", get_agent)
+    monkeypatch.setattr(calls_client, "get_phone_number", get_phone_number)
+    return asyncio.run(phone_calls.check_health())
+
+
+def test_working_phone_connection_has_no_problem(monkeypatch):
+    assert phone_check(monkeypatch) == [{"kind": "phone", "id": 9, "problem": None}]
+
+
+def test_phone_connection_without_a_key_is_broken(monkeypatch):
+    assert phone_check(monkeypatch, api_key="")[0]["problem"] == "The ElevenLabs key is missing."
+
+
+def test_rejected_elevenlabs_key_is_reported(monkeypatch):
+    request = httpx.Request("GET", "https://elevenlabs.test")
+    error = httpx.HTTPStatusError("bad", request=request, response=httpx.Response(401, request=request))
+    assert phone_check(monkeypatch, get_agent_error=error)[0]["problem"] == "ElevenLabs rejected the API key."
+
+
+def test_unreachable_elevenlabs_is_reported(monkeypatch):
+    error = httpx.ConnectError("down")
+    assert phone_check(monkeypatch, get_agent_error=error)[0]["problem"] == "Couldn't reach ElevenLabs."
+
+
+def test_no_phone_connection_has_nothing_to_check(monkeypatch):
+    assert phone_check(monkeypatch, settings={}) == []
 
 
 def test_add_mcp_server_validates_input():

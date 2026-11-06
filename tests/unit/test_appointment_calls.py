@@ -619,13 +619,18 @@ def test_poller_waits_when_the_ids_were_not_saved_yet(monkeypatch):
 CONNECTION_BODY = {"ownerName": "Sam", "apiKey": "k", "agentId": "agent1", "phoneNumberId": "phone1"}
 
 
-def agent_answers(monkeypatch, agent=None, error=None):
+def agent_answers(monkeypatch, agent=None, error=None, phone_error=None):
     async def get_agent(api_key, agent_id):
         if error:
             raise error
         return agent
 
+    async def get_phone_number(api_key, phone_number_id):
+        if phone_error:
+            raise phone_error
+
     monkeypatch.setattr(calls_client, "get_agent", get_agent)
+    monkeypatch.setattr(calls_client, "get_phone_number", get_phone_number)
 
 
 def status_error(status):
@@ -650,6 +655,18 @@ def test_connect_explains_rejections(monkeypatch, status, text):
     response = post_connection()
     assert response.status_code == 422
     assert text in response.json()["error"]
+
+
+def test_connect_refuses_an_unknown_phone_number_id(monkeypatch):
+    agent_answers(monkeypatch, OWN_MODEL_AGENT, phone_error=status_error(404))
+    response = post_connection()
+    assert response.status_code == 422
+    assert "phone number ID" in response.json()["error"]
+
+
+def test_connect_reports_when_the_phone_number_check_fails(monkeypatch):
+    agent_answers(monkeypatch, OWN_MODEL_AGENT, phone_error=status_error(500))
+    assert post_connection().status_code == 502
 
 
 def test_connect_reports_when_elevenlabs_is_unreachable(monkeypatch):

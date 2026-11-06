@@ -4,17 +4,24 @@ import logging
 import sys
 
 import asyncpg
+import httpx
 
 from src.backend import config, db
 from src.backend.config import TOOL_TIMEOUT
-from src.backend.integrations import api_store, env_secrets, mcp_store, oauth, toolbox
-from src.backend.integrations.errors import DuplicateNameError
+from src.backend.integrations import api_client, api_store, env_secrets, mcp_store, oauth, toolbox
+from src.backend.integrations.errors import DuplicateNameError, LoginNotConfirmed, McpError
 from src.backend.integrations.gmail import mailbox
+from src.backend.integrations.google_calendar import api as calendar_api
+from src.backend.integrations.google_calendar import sign_in as calendar_sign_in
 
 logger = logging.getLogger(__name__)
 
+HEALTH_CHECK_TIMEOUT = 30
 GMAIL_NAME = "Gmail"
 GMAIL_SERVER_ARGS = ["-m", "src.backend.integrations.gmail.server"]
+GOOGLE_CALENDAR_NAME = "Google Calendar"
+GOOGLE_CALENDAR_SERVER_ARGS = ["-m", "src.backend.integrations.google_calendar.server"]
+GOOGLE_ACCOUNT_KEY = "GOOGLE_ACCOUNT"
 
 
 def build_auth_headers(integration_name, auth, secrets_to_save):
@@ -123,6 +130,39 @@ async def connect_gmail(connection):
     return public_mcp_server(created)
 
 
+async def begin_google_calendar_sign_in(connection, redirect_uri):
+    """Returns the address to sign in at; the connection is saved once sign-in finishes."""
+    if any(existing["name"] == GOOGLE_CALENDAR_NAME for existing in await mcp_store.list_servers()):
+        raise DuplicateNameError(GOOGLE_CALENDAR_NAME)
+    return calendar_sign_in.begin(connection["clientId"], connection["clientSecret"], redirect_uri)
+
+
+async def finish_google_calendar_sign_in(state, code):
+    client_id, client_secret, refresh_token, account = await calendar_sign_in.finish(state, code)
+    secret_name = env_secrets.secret_name(GOOGLE_CALENDAR_NAME, "CLIENT_SECRET")
+    token_name = env_secrets.secret_name(GOOGLE_CALENDAR_NAME, "REFRESH_TOKEN")
+    record = {
+        "name": GOOGLE_CALENDAR_NAME,
+        "transport": "stdio",
+        "command": sys.executable,
+        "args": GOOGLE_CALENDAR_SERVER_ARGS,
+        "env": {
+            "GOOGLE_CLIENT_ID": client_id,
+            "GOOGLE_CLIENT_SECRET": env_secrets.reference(secret_name),
+            "GOOGLE_REFRESH_TOKEN": env_secrets.reference(token_name),
+            "PYTHONPATH": str(config.ROOT_DIR),
+            **({GOOGLE_ACCOUNT_KEY: account} if account else {}),
+        },
+    }
+    created = await save_with_secrets(
+        GOOGLE_CALENDAR_NAME,
+        {secret_name: client_secret, token_name: refresh_token},
+        lambda: mcp_store.create_server(record),
+    )
+    logger.info("Connected Google Calendar")
+    return public_mcp_server(created)
+
+
 async def add_api_integration(integration):
     secrets_to_save = {}
     record = {
@@ -133,9 +173,13 @@ async def add_api_integration(integration):
         "parameters": integration["parameters"],
         "headers": build_auth_headers(integration["name"], integration, secrets_to_save),
     }
-    created = await save_with_secrets(
-        integration["name"], secrets_to_save, lambda: api_store.create_integration(record)
-    )
+
+    async def check_and_create():
+        if secrets_to_save:
+            await api_client.check_login(record, TOOL_TIMEOUT)
+        return await api_store.create_integration(record)
+
+    created = await save_with_secrets(integration["name"], secrets_to_save, check_and_create)
     logger.info("Added API integration %r", created["name"])
     return public_api_integration(created)
 
@@ -175,6 +219,16 @@ def public_mcp_server(server):
             "target": server["env"]["GMAIL_ADDRESS"],
             "enabled": server["enabled"],
         }
+    if server["args"] == GOOGLE_CALENDAR_SERVER_ARGS:
+        return {
+            "id": server["id"],
+            "kind": "mcp",
+            "provider": "google-calendar",
+            "name": server["name"],
+            "transport": server["transport"],
+            "target": server["env"].get(GOOGLE_ACCOUNT_KEY, "Signed in with Google"),
+            "enabled": server["enabled"],
+        }
     if server["transport"] == "http":
         target = server["url"]
     else:
@@ -201,6 +255,68 @@ def public_api_integration(integration):
     }
 
 
+async def check_mcp_server(server):
+    """Listing tools doesn't prove a Gmail login, because its local server only signs in when it reads mail."""
+    if server["args"] == GMAIL_SERVER_ARGS:
+        environment = env_secrets.resolve_mapping(server["env"])
+        await asyncio.to_thread(mailbox.check_login, environment["GMAIL_ADDRESS"], environment["GMAIL_APP_PASSWORD"])
+        return
+    if server["args"] == GOOGLE_CALENDAR_SERVER_ARGS:
+        environment = env_secrets.resolve_mapping(server["env"])
+        await asyncio.to_thread(
+            calendar_api.get_access_token,
+            environment["GOOGLE_CLIENT_ID"],
+            environment["GOOGLE_CLIENT_SECRET"],
+            environment["GOOGLE_REFRESH_TOKEN"],
+        )
+        return
+    await oauth.refresh_if_needed(server)
+    await toolbox.check_connection(server)
+
+
+async def check_api_integration(integration):
+    """An API with no login has nothing to check."""
+    if integration["headers"]:
+        await api_client.check_login(integration, TOOL_TIMEOUT)
+
+
+def problem_text(error):
+    if isinstance(error, mailbox.GmailLoginError):
+        return "Gmail rejected the app password."
+    if isinstance(error, (LoginNotConfirmed, McpError, calendar_api.CalendarError)):
+        return str(error)
+    if isinstance(error, asyncio.TimeoutError):
+        return "It didn't answer in time."
+    if isinstance(error, (OSError, httpx.HTTPError)):
+        return "Couldn't reach it."
+    return "Couldn't check this connection."
+
+
+async def find_problem(kind, integration_id, check):
+    """Returns the integration's status. One broken connection must never stop the others being checked."""
+    try:
+        await asyncio.wait_for(check, HEALTH_CHECK_TIMEOUT)
+    except Exception as error:
+        logger.warning("Integration %s %s isn't working: %s", kind, integration_id, type(error).__name__)
+        return {"kind": kind, "id": integration_id, "problem": problem_text(error)}
+    return {"kind": kind, "id": integration_id, "problem": None}
+
+
+async def check_health():
+    """Checks each integration that's turned on. Turned-off ones aren't in use, so they aren't contacted."""
+    servers = await mcp_store.list_servers()
+    integrations = await api_store.list_integrations()
+    checks = [
+        *(find_problem("mcp", server["id"], check_mcp_server(server)) for server in servers if server["enabled"]),
+        *(
+            find_problem("api", integration["id"], check_api_integration(integration))
+            for integration in integrations
+            if integration["enabled"]
+        ),
+    ]
+    return await asyncio.gather(*checks)
+
+
 async def list_integrations():
     servers = await mcp_store.list_servers()
     integrations = await api_store.list_integrations()
@@ -224,3 +340,16 @@ async def load_enabled_integrations():
     mcp_servers = await load_enabled(mcp_store.list_enabled_servers, "mcp_servers")
     api_integrations = await load_enabled(api_store.list_enabled_integrations, "api_integrations")
     return mcp_servers, api_integrations
+
+
+def describe_mcp_server(server):
+    """Other servers show only their name, because their address or command could contain a key."""
+    public = public_mcp_server(server)
+    if "provider" in public and "@" in public["target"]:
+        return f"{public['name']} ({public['target']})"
+    return public["name"]
+
+
+def describe_connections(mcp_servers, api_integrations):
+    """What's connected, in words safe to give the model."""
+    return [*map(describe_mcp_server, mcp_servers), *(integration["name"] for integration in api_integrations)]

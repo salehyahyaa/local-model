@@ -97,7 +97,7 @@ def test_connections_list_everything_and_never_a_secret(telegram_on, monkeypatch
     services = by_name(body["services"])
     assert services["Telegram bot"] == {
         "name": "Telegram bot",
-        "detail": "Running · starts at login · can't approve actions",
+        "detail": "Running · starts at login",
         "isConnected": True,
     }
     assert services["Chat model"]["detail"] == "No model connected"

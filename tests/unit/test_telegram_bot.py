@@ -5,12 +5,17 @@ import logging
 import httpx
 import pytest
 
+from src.backend.chat import approvals
 from src.backend.telegram_bot.__main__ import is_set_up
 from src.backend.telegram_bot.bot import (
     MAX_HISTORY_MESSAGES,
     NEW_CONVERSATION_MESSAGE,
+    NO_LONGER_WAITING,
+    TAP_A_BUTTON_MESSAGE,
     TEXT_ONLY_MESSAGE,
     Bot,
+    approval_buttons,
+    describe_approval,
     split_message,
 )
 from src.backend.telegram_bot.chat_client import APP_NOT_RUNNING, APP_STOPPED_RESPONDING, ChatClient, ChatError
@@ -240,15 +245,278 @@ def test_update_is_confirmed_before_it_is_handled():
         return text_reply("ok")
 
     bot = make_bot(fake, chat_handler)
-    offset = asyncio.run(bot.poll_once(None))
-    assert offset == 8
+
+    async def scenario():
+        offset = await bot.poll_once(None)
+        await bot.latest_work
+        return offset
+
+    assert asyncio.run(scenario()) == 8
     assert order == [[None, 8]]
 
 
 def test_unexpected_error_does_not_stop_the_bot():
     fake = FakeTelegram(updates=[{"update_id": 3, "message": {"from": {"id": OWNER_ID}, "chat": {"type": "private"}}}])
     bot = make_bot(fake, fail_if_called)
-    assert asyncio.run(bot.poll_once(None)) == 4
+
+    async def scenario():
+        offset = await bot.poll_once(None)
+        await bot.latest_work
+        return offset
+
+    assert asyncio.run(scenario()) == 4
+
+
+# Approving actions from the phone
+
+
+APPROVAL = {
+    "type": "approval",
+    "id": "abc123",
+    "label": "Google Calendar → update_event",
+    "details": {"event_id": "e1", "start": "2026-11-10T14:00:00-06:00", "nested": {"a": 1}},
+}
+
+
+def button_update(data="approve:abc123", sender_id=OWNER_ID, chat_type="private", update_id=2):
+    return {
+        "update_id": update_id,
+        "callback_query": {
+            "id": "tap1",
+            "from": {"id": sender_id},
+            "data": data,
+            "message": {"message_id": 77, "text": "Approve this?", "chat": {"id": CHAT_ID, "type": chat_type}},
+        },
+    }
+
+
+def test_chat_can_ask_for_approval_and_saves_into_the_conversation():
+    seen = {}
+
+    def handler(request):
+        seen.update(json.loads(request.content))
+        return text_reply("ok")
+
+    bot = make_saving_bot(handler, FakeConversations())
+    asyncio.run(bot.handle_update(update()))
+    assert seen["canApprove"] is True
+    assert seen["conversationId"] == 5
+
+
+def test_approval_shows_what_would_happen_with_two_buttons():
+    fake = FakeTelegram()
+    body = stream_body(APPROVAL, {"type": "text", "text": "Done"})
+    bot = make_bot(fake, lambda request: httpx.Response(200, text=body))
+    asyncio.run(bot.handle_update(update()))
+
+    sent = [payload for method, payload in fake.calls if method == "sendMessage"]
+    assert "Google Calendar → update_event" in sent[0]["text"]
+    assert "start: 2026-11-10T14:00:00-06:00" in sent[0]["text"]
+    assert 'nested: {"a": 1}' in sent[0]["text"]
+    buttons = sent[0]["reply_markup"]["inline_keyboard"][0]
+    assert [button["text"] for button in buttons] == ["Approve", "Deny"]
+    assert [button["callback_data"] for button in buttons] == ["approve:abc123", "deny:abc123"]
+    assert sent[1]["text"] == "Done"
+
+
+def test_real_approval_ids_fit_in_a_telegram_button():
+    approval_id = approvals.secrets.token_urlsafe(24)
+    longest = approval_buttons(approval_id)["inline_keyboard"][0][0]["callback_data"]
+    assert len(longest.encode()) <= 64
+
+
+def test_long_details_say_they_were_cut_off():
+    text = describe_approval({"label": "Send", "details": {"body": "a" * 9000}})
+    assert len(text) < 4096
+    assert "cut off" in text
+
+
+def app_answering(status=200):
+    seen = []
+
+    def handler(request):
+        seen.append((request.url.path, json.loads(request.content)))
+        return httpx.Response(status, json={"ok": True})
+
+    return handler, seen
+
+
+@pytest.mark.parametrize(("data", "approved", "label"), [("approve:abc123", True, "Approved"), ("deny:abc123", False, "Denied")])
+def test_tap_reaches_the_app_and_removes_the_buttons(data, approved, label):
+    handler, seen = app_answering()
+    fake = FakeTelegram()
+    bot = make_bot(fake, handler)
+    asyncio.run(bot.handle_button(button_update(data)["callback_query"]))
+    assert seen == [("/api/chat/approvals/abc123", {"approved": approved})]
+    calls = dict(fake.calls)
+    assert calls["answerCallbackQuery"]["text"] == label
+    assert calls["editMessageText"]["message_id"] == 77
+    assert calls["editMessageText"]["text"].endswith(label)
+    assert "reply_markup" not in calls["editMessageText"]
+
+
+@pytest.mark.parametrize(
+    "tap",
+    [
+        button_update(sender_id=999),
+        button_update(chat_type="group"),
+        button_update(data="something-else"),
+        button_update(data=None),
+    ],
+)
+def test_taps_from_strangers_or_unknown_buttons_do_nothing(tap):
+    fake = FakeTelegram()
+    bot = make_bot(fake, fail_if_called)
+    asyncio.run(bot.handle_button(tap["callback_query"]))
+    assert fake.calls == []
+
+
+def test_tap_on_an_expired_request_says_so():
+    handler, _ = app_answering(status=404)
+    fake = FakeTelegram()
+    bot = make_bot(fake, handler)
+    asyncio.run(bot.handle_button(button_update()["callback_query"]))
+    assert dict(fake.calls)["answerCallbackQuery"]["text"] == NO_LONGER_WAITING
+
+
+def test_tap_while_the_app_is_down_keeps_the_buttons():
+    def handler(request):
+        raise httpx.ConnectError("refused")
+
+    fake = FakeTelegram()
+    bot = make_bot(fake, handler)
+    asyncio.run(bot.handle_button(button_update()["callback_query"]))
+    calls = dict(fake.calls)
+    assert calls["answerCallbackQuery"]["text"] == APP_NOT_RUNNING
+    assert "editMessageText" not in calls
+
+
+def test_tap_is_handled_while_the_reply_it_belongs_to_is_still_running():
+    """The real risk here is a deadlock, where the reply waits for a tap the bot isn't reading."""
+    fake = FakeTelegram(updates=[update(update_id=1), button_update(update_id=2)])
+
+    async def scenario():
+        release = asyncio.Event()
+
+        async def ask(messages, conversation_id, on_approval):
+            await on_approval(APPROVAL)
+            await release.wait()
+            return "Moved it"
+
+        async def answer_approval(approval_id, approved):
+            release.set()
+            return True
+
+        bot = make_bot(fake, fail_if_called)
+        bot.chat_client.ask = ask
+        bot.chat_client.answer_approval = answer_approval
+        offset = await bot.poll_once(None)
+        await asyncio.sleep(0.01)
+        await bot.poll_once(offset)
+        await asyncio.wait_for(bot.latest_work, 5)
+
+    asyncio.run(scenario())
+    assert fake.sent[-1] == "Moved it"
+
+
+def test_commands_sent_during_an_approval_wait_their_turn():
+    order = []
+    fake = FakeTelegram()
+
+    async def scenario():
+        release = asyncio.Event()
+
+        async def ask(messages, conversation_id, on_approval):
+            text = messages[-1]["content"]
+            order.append(text)
+            await on_approval(APPROVAL)
+            await release.wait()
+            return f"answer to {text}"
+
+        bot = make_bot(fake, fail_if_called)
+        bot.chat_client.ask = ask
+        await bot.queue_message(update(text="first"))
+        await asyncio.sleep(0.01)
+        await bot.queue_message(update(text="/new"))
+        assert fake.sent[-1] == TAP_A_BUTTON_MESSAGE
+        release.set()
+        await asyncio.wait_for(bot.latest_work, 5)
+
+    asyncio.run(scenario())
+    assert order == ["first"]
+    assert fake.sent[-1] == NEW_CONVERSATION_MESSAGE
+
+
+def make_bot_waiting_on_approval(fake, follow_up_result=True):
+    release = asyncio.Event()
+    sent_follow_ups = []
+
+    async def ask(messages, conversation_id, on_approval):
+        await on_approval(APPROVAL)
+        await release.wait()
+        return "Changed it"
+
+    async def send_follow_up(approval_id, text):
+        sent_follow_ups.append((approval_id, text))
+        release.set()
+        return follow_up_result
+
+    bot = make_bot(fake, fail_if_called)
+    bot.chat_client.ask = ask
+    bot.chat_client.send_follow_up = send_follow_up
+    return bot, sent_follow_ups
+
+
+def test_typing_during_an_approval_goes_to_the_reply_that_is_waiting():
+    fake = FakeTelegram()
+
+    async def scenario():
+        bot, sent_follow_ups = make_bot_waiting_on_approval(fake)
+        await bot.queue_message(update(text="move my dinner"))
+        await asyncio.sleep(0.01)
+        work = bot.latest_work
+        await bot.queue_message(update(text="make it 7pm"))
+        await asyncio.wait_for(work, 5)
+        assert sent_follow_ups == [(APPROVAL["id"], "make it 7pm")]
+        assert bot.latest_work is work
+        return bot.history
+
+    history = asyncio.run(scenario())
+    assert fake.sent[-1] == "Changed it"
+    assert TAP_A_BUTTON_MESSAGE not in fake.sent
+    assert [message["content"] for message in history] == ["move my dinner", "make it 7pm", "Changed it"]
+
+
+def test_message_is_answered_normally_if_the_approval_already_expired():
+    fake = FakeTelegram()
+
+    async def scenario():
+        bot, sent_follow_ups = make_bot_waiting_on_approval(fake, follow_up_result=False)
+        await bot.queue_message(update(text="move my dinner"))
+        await asyncio.sleep(0.01)
+        work = bot.latest_work
+        await bot.queue_message(update(text="make it 7pm"))
+        assert bot.latest_work is not work
+        bot.latest_work.cancel()
+        work.cancel()
+        await asyncio.gather(work, bot.latest_work, return_exceptions=True)
+        return sent_follow_ups
+
+    assert len(asyncio.run(scenario())) == 1
+
+
+def test_strangers_messages_are_never_queued():
+    fake = FakeTelegram(updates=[update(sender_id=999)])
+    bot = make_bot(fake, fail_if_called)
+    asyncio.run(bot.poll_once(None))
+    assert bot.latest_work is None
+
+
+def test_polling_asks_telegram_for_button_taps():
+    fake = FakeTelegram()
+    bot = make_bot(fake, fail_if_called)
+    asyncio.run(bot.poll_once(None))
+    assert "callback_query" in fake.calls[0][1]["allowed_updates"]
 
 
 def test_polling_retries_after_a_network_drop(no_waiting):

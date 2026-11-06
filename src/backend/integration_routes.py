@@ -8,13 +8,14 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from src.backend.appointment_calls import connection as phone_calls
 from src.backend.appointment_calls import store as phone_call_store
 from src.backend.integrations import api_store, mcp_store, service
-from src.backend.integrations.errors import DuplicateNameError, McpError
+from src.backend.integrations.errors import DuplicateNameError, LoginNotConfirmed, McpError
 from src.backend.integrations.gmail.mailbox import GmailLoginError
 from src.backend.integrations.oauth import OAuthError
 from src.backend.integrations.validation import (
     validate_api_integration,
     validate_enabled_change,
     validate_gmail_connection,
+    validate_google_calendar_connection,
     validate_mcp_server,
 )
 from src.backend.routes import is_same_origin
@@ -71,6 +72,12 @@ async def list_integrations():
     return {**await service.list_integrations(), "phoneCalls": await phone_calls.list_public()}
 
 
+@router.get("/health")
+async def integration_health():
+    connections, phone = await asyncio.gather(service.check_health(), phone_calls.check_health())
+    return {"integrations": [*connections, *phone]}
+
+
 @router.post("/mcp", status_code=201)
 async def add_mcp_server(request: Request):
     server, error = validate_mcp_server(await read_json(request))
@@ -117,6 +124,8 @@ async def add_api_integration(request: Request):
         return await service.add_api_integration(integration)
     except DuplicateNameError:
         return duplicate_name_response(integration["name"])
+    except LoginNotConfirmed as problem:
+        return error_response(str(problem), 422)
 
 
 @router.post("/gmail", status_code=201)
@@ -135,6 +144,32 @@ async def connect_gmail(request: Request):
     except (OSError, asyncio.TimeoutError):
         logger.warning("Could not reach Gmail to check the login")
         return error_response("Couldn't reach Gmail. Check your internet connection and try again.", 502)
+
+
+@router.post("/google-calendar", status_code=201)
+async def connect_google_calendar(request: Request):
+    connection, error = validate_google_calendar_connection(await read_json(request))
+    if error:
+        return error_response(error, 422)
+    redirect_uri = str(request.url_for("finish_google_calendar_sign_in"))
+    try:
+        return {"authorizationUrl": await service.begin_google_calendar_sign_in(connection, redirect_uri)}
+    except DuplicateNameError:
+        return error_response("Google Calendar is already connected.", 409)
+
+
+@router.get("/google-calendar/callback")
+async def finish_google_calendar_sign_in(state: str = "", code: str = "", error: str = ""):
+    """Google sends the browser back here after sign-in, so the answer is a page and not JSON."""
+    if error or not code:
+        return sign_in_page("Sign-in was cancelled. You can close this tab.", finished=False)
+    try:
+        await service.finish_google_calendar_sign_in(state, code)
+    except DuplicateNameError:
+        return sign_in_page("Google Calendar is already connected. You can close this tab.", finished=False)
+    except OAuthError as sign_in_error:
+        return sign_in_page(f"{sign_in_error} You can close this tab.", finished=False)
+    return sign_in_page("Signed in. You can close this tab.", finished=True)
 
 
 @router.patch("/{kind}/{integration_id}")

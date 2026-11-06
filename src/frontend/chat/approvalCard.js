@@ -23,7 +23,37 @@ function createButton(text, className, onClick) {
   return button;
 }
 
-/** Shows exactly what will run. The model's reply stays on hold until this is answered. */
+// The card still waiting for an answer. Only one can wait at a time, because the reply is on hold until it's answered.
+let waitingCard = null;
+
+function setWaitingCard(card) {
+  waitingCard = card;
+  document.dispatchEvent(new CustomEvent("approval-wait-changed"));
+}
+
+export function hasWaitingApproval() {
+  return waitingCard !== null;
+}
+
+export function forgetWaitingApproval() {
+  setWaitingCard(null);
+}
+
+/** Cancels the waiting card and hands the owner's message to the model. Throws if the card can't take it. */
+export async function replaceWaitingApproval(followUp) {
+  const { approval, actions } = waitingCard;
+  setWaitingCard(null);
+  actions.replaceChildren();
+  actions.textContent = "Not done. Changed by your message";
+  try {
+    await requestJson("POST", `/api/chat/approvals/${encodeURIComponent(approval.id)}`, { followUp });
+  } catch (error) {
+    actions.textContent = error.message;
+    throw error;
+  }
+}
+
+/** Shows exactly what will run. The model's reply stays on hold until this is answered or the owner sends a message. */
 export function addApprovalCard(approval, beforeElement) {
   const card = document.createElement("div");
   card.className = "approval-card";
@@ -40,6 +70,7 @@ export function addApprovalCard(approval, beforeElement) {
   actions.className = "approval-actions";
 
   async function answer(approved) {
+    setWaitingCard(null);
     actions.replaceChildren();
     actions.textContent = approved ? "Approved" : "Denied";
     try {
@@ -56,5 +87,6 @@ export function addApprovalCard(approval, beforeElement) {
   card.appendChild(actions);
 
   beforeElement.parentNode.insertBefore(card, beforeElement);
+  setWaitingCard({ approval, actions });
   scrollToBottom();
 }

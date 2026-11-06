@@ -1,6 +1,6 @@
 import * as chatStore from "./chatStore.js";
 import { streamChatReply } from "./chatApi.js";
-import { addApprovalCard } from "./approvalCard.js";
+import { addApprovalCard, forgetWaitingApproval, replaceWaitingApproval } from "./approvalCard.js";
 import {
   addDocumentCard,
   addMessageBubble,
@@ -12,6 +12,16 @@ import {
 import { clearAttachedDocuments, readAttachedDocuments } from "./attachment.js";
 import { getSelectedModelId, IMAGE_GENERATION_MODEL_ID } from "../models/modelPicker.js";
 import { watchCalls } from "../calls/callWatcher.js";
+
+let currentExchange = null;
+
+/** Sends a message into the reply that's on hold for an approval, so it answers the card instead of starting over. */
+export async function sendFollowUp(text) {
+  const { chat, model, replyBubble } = currentExchange;
+  await replaceWaitingApproval(text);
+  replyBubble.before(addMessageBubble("user", text));
+  chatStore.addMessage(chat, "user", text, model);
+}
 
 export async function sendMessage(text) {
   const chat = chatStore.getActiveChat();
@@ -34,6 +44,7 @@ export async function sendMessage(text) {
 
   const replyBubble = addMessageBubble("assistant", "");
   replyBubble.classList.add("pending");
+  currentExchange = { chat, model, replyBubble };
 
   try {
     const replyText = await streamChatReply(chat.messages, chat.id, {
@@ -53,7 +64,9 @@ export async function sendMessage(text) {
     return null;
   } finally {
     replyBubble.classList.remove("pending");
+    currentExchange = null;
     chatStore.setBusy(false);
+    forgetWaitingApproval();
   }
 }
 

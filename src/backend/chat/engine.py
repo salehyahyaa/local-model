@@ -14,6 +14,10 @@ logger = logging.getLogger(__name__)
 
 MAX_TOOL_ROUNDS = 8
 NOT_APPROVED = "The owner did not approve this, so it did not happen. Do not try again unless the owner asks."
+OWNER_SENT_A_MESSAGE = (
+    "This did not happen, because the owner sent a new message instead of approving. Follow that message. "
+    "If this action is still wanted, request it again with any changes."
+)
 CANNOT_APPROVE_HERE = "This needs the owner's approval, which is only possible in the web app. It did not happen."
 TOO_MANY_ROUNDS = "The model used too many tools without finishing its reply."
 
@@ -43,6 +47,14 @@ def current_time_message(now=None):
     return {"role": "system", "content": f"The owner's current date and time: {now:%A, %B %d, %Y, %H:%M (UTC%z)}."}
 
 
+def connections_messages(mcp_servers, api_integrations):
+    """So the model can answer "what's connected?" without digging through the owner's data to work it out."""
+    connections = service.describe_connections(mcp_servers, api_integrations)
+    if not connections:
+        return []
+    return [{"role": "system", "content": f"The owner's connected services: {', '.join(connections)}."}]
+
+
 async def run_chat(messages, model, can_approve, conversation_id=None):
     """Yields the events the chat page reads: text, tool, approval and error."""
     mcp_servers, api_integrations = await service.load_enabled_integrations()
@@ -50,7 +62,12 @@ async def run_chat(messages, model, can_approve, conversation_id=None):
         await appointment_call_tool.register(toolbox, conversation_id)
         prompt = await system_prompt.load_for_chat()
         owner_prompt = [{"role": "system", "content": prompt}] if prompt.strip() else []
-        conversation = [*owner_prompt, current_time_message(), *messages]
+        conversation = [
+            *owner_prompt,
+            current_time_message(),
+            *connections_messages(mcp_servers, api_integrations),
+            *messages,
+        ]
         for _ in range(MAX_TOOL_ROUNDS):
             text = ""
             calls = []
@@ -70,7 +87,12 @@ async def run_chat(messages, model, can_approve, conversation_id=None):
                 return
             conversation.append(assistant_message(text, calls))
 
+            follow_up = None
             for call in calls:
+                # Every tool call needs a result before the owner's message can follow, but none may run now.
+                if follow_up is not None:
+                    conversation.append(tool_message(call, OWNER_SENT_A_MESSAGE))
+                    continue
                 arguments = read_arguments(call["arguments"])
                 if toolbox.needs_approval(call["name"]):
                     if not can_approve:
@@ -83,12 +105,20 @@ async def run_chat(messages, model, can_approve, conversation_id=None):
                         "label": toolbox.label_for(call["name"]),
                         "details": arguments,
                     }
-                    if not await approvals.wait(approval_id, decision):
+                    answer = await approvals.wait(approval_id, decision)
+                    if answer.follow_up is not None:
+                        follow_up = answer.follow_up
+                        conversation.append(tool_message(call, OWNER_SENT_A_MESSAGE))
+                        continue
+                    if not answer.approved:
                         conversation.append(tool_message(call, NOT_APPROVED))
                         continue
 
                 label, result = await toolbox.call(call["name"], arguments)
                 yield {"type": "tool", "label": label}
                 conversation.append(tool_message(call, result))
+
+            if follow_up is not None:
+                conversation.append({"role": "user", "content": follow_up})
 
         yield {"type": "error", "message": TOO_MANY_ROUNDS}

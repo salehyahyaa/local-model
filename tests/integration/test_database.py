@@ -53,6 +53,20 @@ def test_conversations_and_messages(test_database_url, monkeypatch):
     ]
 
 
+def test_sql_in_user_text_is_stored_as_plain_text(test_database_url, monkeypatch):
+    payload = "'; DROP TABLE messages; --"
+
+    async def scenario():
+        conversation = await store.create_conversation()
+        await store.add_message(conversation["id"], "user", payload, "image-generation")
+        await store.update_conversation(conversation["id"], {"title": payload})
+        return await store.get_state()
+
+    state = run_with_database(test_database_url, monkeypatch, scenario)
+    conversation = next(item for item in state["conversations"] if item["title"] == payload)
+    assert conversation["messages"][0]["content"] == payload
+
+
 def test_image_exchange_is_saved_in_order(test_database_url, monkeypatch):
     async def scenario():
         conversation = await store.create_conversation()
@@ -130,7 +144,13 @@ def test_service_keeps_keys_out_of_the_database(test_database_url, monkeypatch, 
 
 def test_integration_api_end_to_end(test_database_url, monkeypatch, env_file):
     monkeypatch.setattr(db, "DATABASE_URL", test_database_url)
+    from src.backend.integrations import api_client
     from src.backend.main import app
+
+    async def accept_login(record, timeout):
+        return None
+
+    monkeypatch.setattr(api_client, "check_login", accept_login)
 
     with TestClient(app) as client:
         response = client.post(

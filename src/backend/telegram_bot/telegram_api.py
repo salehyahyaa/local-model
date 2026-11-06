@@ -40,13 +40,23 @@ class TelegramApi:
 
     async def get_updates(self, offset=None, timeout=0, limit=1):
         """Asking for an offset tells Telegram that every earlier update has been received."""
-        payload = {"timeout": timeout, "limit": limit, "allowed_updates": ["message"]}
+        payload = {"timeout": timeout, "limit": limit, "allowed_updates": ["message", "callback_query"]}
         if offset is not None:
             payload["offset"] = offset
         return await self.call("getUpdates", payload, timeout=timeout + POLL_EXTRA_TIMEOUT)
 
-    async def send_message(self, chat_id, text):
-        return await self.call("sendMessage", {"chat_id": chat_id, "text": text})
+    async def send_message(self, chat_id, text, reply_markup=None):
+        payload = {"chat_id": chat_id, "text": text}
+        if reply_markup is not None:
+            payload["reply_markup"] = reply_markup
+        return await self.call("sendMessage", payload)
+
+    async def answer_button(self, callback_id, text):
+        return await self.call("answerCallbackQuery", {"callback_query_id": callback_id, "text": text})
+
+    async def edit_message(self, chat_id, message_id, text):
+        """Replacing the text also removes the message's buttons."""
+        return await self.call("editMessageText", {"chat_id": chat_id, "message_id": message_id, "text": text})
 
     async def send_typing(self, chat_id):
         return await self.call("sendChatAction", {"chat_id": chat_id, "action": "typing"})

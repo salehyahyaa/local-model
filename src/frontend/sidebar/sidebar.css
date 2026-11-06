@@ -22,9 +22,10 @@
 
 .sidebar.collapsed #sidebar-toggle-button { order: 1; margin-bottom: 8px; }
 .sidebar.collapsed #new-chat-button { order: 2; }
-.sidebar.collapsed #search-button { order: 3; }
-.sidebar.collapsed #settings-button { order: 4; }
-.sidebar.collapsed #archive-button { order: 5; }
+.sidebar.collapsed #control-panel-button { order: 3; }
+.sidebar.collapsed #search-button { order: 4; }
+.sidebar.collapsed #settings-button { order: 5; }
+.sidebar.collapsed #archive-button { order: 6; }
 
 .archive-button { margin-top: auto; }
 .archive-button.active,
@@ -93,11 +94,38 @@
 
 .sidebar-row:hover { background: var(--hover); }
 
+.control-panel-button,
+.control-panel-button:hover,
+.sidebar.collapsed .control-panel-button,
+.sidebar.collapsed .control-panel-button:hover {
+  background: linear-gradient(120deg, #1e3a8a, #2563eb, #0284c7, #0ea5e9);
+  background-size: 250% 250%;
+  color: #fff;
+}
+
+.control-panel-button {
+  margin-top: 4px;
+  animation: control-panel-shift 7s ease-in-out infinite alternate;
+}
+
+.control-panel-button:hover { filter: brightness(1.08); }
+
+@keyframes control-panel-shift {
+  from { background-position: 0% 50%; }
+  to { background-position: 100% 50%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .control-panel-button { animation: none; }
+}
+
 .section-label {
   padding: 16px 7px 4px;
   font-size: 11.5px;
   color: var(--muted-text);
 }
+
+#recents-label { padding-top: 28px; }
 
 .chat-list {
   display: flex;

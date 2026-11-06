@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/chat")
 
 NO_MODEL_MESSAGE = "No model is connected."
+EXPIRED_MESSAGE = "This request has expired."
 
 
 async def read_json(request):
@@ -49,9 +50,24 @@ async def chat(request: Request):
 @router.post("/approvals/{approval_id}")
 async def answer_approval(approval_id: str, request: Request):
     body = await read_json(request)
-    if not isinstance(body, dict) or not isinstance(body.get("approved"), bool):
+    if not isinstance(body, dict):
+        return JSONResponse({"error": "Invalid answer"}, status_code=422)
+    if "followUp" in body:
+        return answer_with_follow_up(approval_id, body)
+    if not isinstance(body.get("approved"), bool):
         return JSONResponse({"error": "Invalid answer"}, status_code=422)
     if not approvals.resolve(approval_id, body["approved"]):
-        return JSONResponse({"error": "This request has expired."}, status_code=404)
+        return JSONResponse({"error": EXPIRED_MESSAGE}, status_code=404)
     logger.info("Tool call %s by the owner", "approved" if body["approved"] else "denied")
+    return {"ok": True}
+
+
+def answer_with_follow_up(approval_id, body):
+    """A follow-up can't come with a yes, because a message must never approve anything."""
+    follow_up = body["followUp"]
+    if "approved" in body or not isinstance(follow_up, str) or not follow_up.strip():
+        return JSONResponse({"error": "Invalid answer"}, status_code=422)
+    if not approvals.send_follow_up(approval_id, follow_up.strip()):
+        return JSONResponse({"error": EXPIRED_MESSAGE}, status_code=404)
+    logger.info("Tool call replaced by the owner's follow-up")
     return {"ok": True}

@@ -44,6 +44,23 @@ def test_stdio_mcp_server_splits_arguments_and_reads_environment():
     assert server["env"] == [{"name": "TOKEN", "value": "abc"}]
 
 
+def test_stdio_mcp_server_accepts_the_whole_command_on_one_line():
+    server, error = validate_mcp_server({"name": "Files", "transport": "stdio", "command": 'npx -y "my server"'})
+    assert error is None
+    assert server["command"] == "npx"
+    assert server["args"] == ["-y", "my server"]
+
+
+def test_http_mcp_server_with_sign_in():
+    server, error = validate_mcp_server(
+        {"name": "Notes", "transport": "http", "url": "https://x.com/mcp", "authType": "oauth", "clientId": " id "}
+    )
+    assert error is None
+    assert server["authType"] == "oauth"
+    assert server["clientId"] == "id"
+    assert server["clientSecret"] == ""
+
+
 def test_mcp_server_requires_name():
     _, error = validate_mcp_server({"name": "  ", "transport": "http", "url": "https://x.com"})
     assert "Name" in error

@@ -2,12 +2,43 @@ import asyncio
 import json
 import logging
 import os
+import subprocess
+from functools import lru_cache
 
 from src.backend.integrations.errors import McpError
 
 logger = logging.getLogger(__name__)
 
 MAX_LINE_BYTES = 16 * 1024 * 1024
+# A local server is someone else's program, so it only gets what a program needs to run, not the app's passwords.
+INHERITED_ENVIRONMENT = {"HOME", "USER", "LOGNAME", "SHELL", "TMPDIR", "LANG", "LC_ALL", "LC_CTYPE", "TERM"}
+SHELL_PATH_TIMEOUT = 5
+
+
+@lru_cache(maxsize=1)
+def read_login_shell_path():
+    """Started at login, the app gets a bare PATH without tools like npx, so ask the owner's shell for theirs."""
+    shell = os.environ.get("SHELL")
+    if not shell:
+        return ""
+    try:
+        result = subprocess.run(
+            [shell, "-ilc", 'printf "\\n%s" "$PATH"'],
+            capture_output=True,
+            text=True,
+            stdin=subprocess.DEVNULL,
+            timeout=SHELL_PATH_TIMEOUT,
+        )
+    except (OSError, subprocess.SubprocessError):
+        logger.warning("Could not read PATH from %s", shell)
+        return ""
+    return result.stdout.rsplit("\n", 1)[-1].strip()
+
+
+def build_child_environment(environment):
+    inherited = {name: value for name, value in os.environ.items() if name in INHERITED_ENVIRONMENT}
+    search_path = ":".join(part for part in (read_login_shell_path(), os.environ.get("PATH", "")) if part)
+    return {**inherited, "PATH": search_path, "DO_NOT_TRACK": "1", **environment}
 
 
 class McpStdioTransport:
@@ -20,6 +51,7 @@ class McpStdioTransport:
         self.stderr_task = None
 
     async def start(self):
+        environment = await asyncio.to_thread(build_child_environment, self.environment)
         try:
             self.process = await asyncio.create_subprocess_exec(
                 self.command,
@@ -27,7 +59,7 @@ class McpStdioTransport:
                 stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
-                env={**os.environ, **self.environment},
+                env=environment,
                 limit=MAX_LINE_BYTES,
             )
         except OSError as error:

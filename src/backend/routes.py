@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse
 
 from src.backend import store, stt
 from src.backend.attachments import documents
+from src.backend.chat import model_slot
 from src.backend.models.image_generation import store as image_store
 from src.backend.validation import (
     is_valid_message,
@@ -28,8 +29,9 @@ async def health():
 
 @router.get("/models")
 async def list_models():
-    # No model is connected to this app. Add one only with the owner's explicit permission (see CLAUDE.md).
-    return {"models": [], "defaultModel": None}
+    # Models are connected only with the owner's explicit permission (see CLAUDE.md).
+    name = getattr(model_slot.connected_model, "name", None)
+    return {"models": [name] if name else [], "defaultModel": name}
 
 
 @router.post("/client-errors", status_code=204)

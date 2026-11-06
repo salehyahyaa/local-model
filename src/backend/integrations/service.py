@@ -7,7 +7,7 @@ import asyncpg
 
 from src.backend import config, db
 from src.backend.config import TOOL_TIMEOUT
-from src.backend.integrations import api_store, env_secrets, mcp_store
+from src.backend.integrations import api_store, env_secrets, mcp_store, oauth, toolbox
 from src.backend.integrations.errors import DuplicateNameError
 from src.backend.integrations.gmail import mailbox
 
@@ -66,8 +66,35 @@ async def add_mcp_server(server):
         record["args"] = server["args"]
         record["env"] = build_environment(server["name"], server["env"], secrets_to_save)
 
-    created = await save_with_secrets(server["name"], secrets_to_save, lambda: mcp_store.create_server(record))
+    created = await save_with_secrets(server["name"], secrets_to_save, lambda: check_and_create_server(record))
     logger.info("Added MCP server %r", created["name"])
+    return public_mcp_server(created)
+
+
+async def check_and_create_server(record):
+    await toolbox.check_connection(record)
+    return await mcp_store.create_server(record)
+
+
+async def begin_mcp_sign_in(server, redirect_uri):
+    """Returns the address to sign in at; the server is saved once sign-in finishes."""
+    if any(existing["name"] == server["name"] for existing in await mcp_store.list_servers()):
+        raise DuplicateNameError(server["name"])
+    return await oauth.begin_sign_in(
+        server["name"], server["url"], server["clientId"], server["clientSecret"], redirect_uri
+    )
+
+
+async def finish_mcp_sign_in(state, code):
+    name, url, access_token, saved_state = await oauth.finish_sign_in(state, code)
+    access_secret, state_secret, headers, environment = oauth.build_secret_references(name)
+    record = {"name": name, "transport": "http", "url": url, "headers": headers, "env": environment}
+    created = await save_with_secrets(
+        name,
+        {access_secret: access_token, state_secret: saved_state},
+        lambda: check_and_create_server(record),
+    )
+    logger.info("Added MCP server %r with sign-in", created["name"])
     return public_mcp_server(created)
 
 

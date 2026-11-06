@@ -39,7 +39,10 @@ async def chat(request: Request):
         return JSONResponse({"error": NO_MODEL_MESSAGE}, status_code=503)
 
     can_approve = body.get("canApprove") is True
-    events = engine.run_chat(messages, model, can_approve)
+    conversation_id = body.get("conversationId")
+    if not isinstance(conversation_id, int) or isinstance(conversation_id, bool):
+        conversation_id = None
+    events = engine.run_chat(messages, model, can_approve, conversation_id)
     return StreamingResponse(to_lines(events), media_type="application/x-ndjson")
 
 

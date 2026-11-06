@@ -18,6 +18,10 @@
       <span>Add API</span>
     </button>
   </div>
+  <button id="add-phone-calls-button" class="context-menu-item" type="button">
+    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16.5v3a2 2 0 0 1-2.2 2A18 18 0 0 1 2.5 5.2 2 2 0 0 1 4.5 3h3a2 2 0 0 1 2 1.7l.4 2.6a2 2 0 0 1-.6 1.8L8 10.4a15 15 0 0 0 5.6 5.6l1.3-1.3a2 2 0 0 1 1.8-.6l2.6.4a2 2 0 0 1 1.7 2Z"/></svg>
+    <span>Add phone calls</span>
+  </button>
 </div>
 
 <dialog id="integration-dialog" class="integration-dialog">
@@ -32,17 +36,78 @@
 
     <div data-section="mcp">
       <label class="field">
-        <span>Server URL</span>
-        <input name="mcpUrl" type="url" />
+        <span>Connection</span>
+        <select name="mcpTransport">
+          <option value="http">Server URL</option>
+          <option value="stdio">Local command</option>
+        </select>
       </label>
-      <div class="field-row">
+
+      <div data-section="mcp-http">
         <label class="field">
-          <span>Username</span>
-          <input name="username" type="text" autocomplete="off" />
+          <span>Server URL</span>
+          <input name="mcpUrl" type="url" />
         </label>
         <label class="field">
-          <span>Password</span>
-          <input name="password" type="password" autocomplete="new-password" />
+          <span>Login</span>
+          <select name="mcpAuth">
+            <option value="none">None</option>
+            <option value="oauth">Sign in with the service</option>
+            <option value="apiKey">API key</option>
+            <option value="basic">Username and password</option>
+          </select>
+        </label>
+        <div data-section="mcp-oauth">
+          <div class="field-row">
+            <label class="field">
+              <span>Client ID</span>
+              <input name="clientId" type="text" autocomplete="off" />
+            </label>
+            <label class="field">
+              <span>Client secret</span>
+              <input name="clientSecret" type="password" autocomplete="off" />
+            </label>
+          </div>
+          <small class="integration-secrets-note">Leave these blank unless the service makes you create them. If it does, use this redirect address: <span id="mcp-redirect-address"></span></small>
+        </div>
+        <div data-section="mcp-api-key">
+          <label class="field">
+            <span>API key</span>
+            <input name="mcpApiKey" type="password" autocomplete="off" />
+          </label>
+          <div class="field-row">
+            <label class="field">
+              <span>Header name</span>
+              <input name="mcpAuthHeader" type="text" value="Authorization" />
+            </label>
+            <label class="field">
+              <span>Key prefix</span>
+              <input name="mcpAuthPrefix" type="text" value="Bearer " />
+            </label>
+          </div>
+        </div>
+        <div class="field-row" data-section="mcp-basic">
+          <label class="field">
+            <span>Username</span>
+            <input name="username" type="text" autocomplete="off" />
+          </label>
+          <label class="field">
+            <span>Password</span>
+            <input name="password" type="password" autocomplete="new-password" />
+          </label>
+        </div>
+      </div>
+
+      <div data-section="mcp-stdio">
+        <label class="field">
+          <span>Command</span>
+          <input name="mcpCommand" type="text" spellcheck="false" autocomplete="off" />
+          <small>Runs on this computer with your permissions, so only use servers you trust.</small>
+        </label>
+        <label class="field">
+          <span>Environment variables</span>
+          <textarea name="mcpEnv" rows="2" spellcheck="false" autocomplete="off"></textarea>
+          <small>One per line as NAME=value. Saved to your system keychain.</small>
         </label>
       </div>
     </div>
@@ -93,6 +158,10 @@
 
     <small class="integration-secrets-note">Logins are saved to your system keychain, never to the database or .env.</small>
 
+    <p id="integration-sign-in" hidden>
+      <a id="integration-sign-in-link" class="gmail-password-link" target="_blank" rel="noopener noreferrer">Sign in to finish adding this integration</a>
+    </p>
+
     <p id="integration-form-error" class="form-error" hidden></p>
 
     <div class="dialog-actions">
@@ -119,8 +188,44 @@
     <p id="gmail-form-error" class="form-error" hidden></p>
 
     <div class="dialog-actions">
+      <button id="gmail-other-button" class="secondary-button" type="button">Add something else</button>
       <button id="gmail-cancel-button" class="secondary-button" type="button">Cancel</button>
       <button id="gmail-connect-button" class="save-button" type="submit">Connect</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="phone-calls-dialog" class="integration-dialog">
+  <form id="phone-calls-form" class="integration-form">
+    <h2>Add phone calls</h2>
+
+    <label class="field">
+      <span>Your name</span>
+      <input name="ownerName" type="text" maxlength="100" autocomplete="name" required />
+      <small>The agent says it's calling on behalf of this name.</small>
+    </label>
+    <label class="field">
+      <span>ElevenLabs API key</span>
+      <input name="apiKey" type="password" autocomplete="off" required />
+    </label>
+    <label class="field">
+      <span>ElevenLabs agent ID</span>
+      <input name="agentId" type="text" autocomplete="off" required />
+      <small>The agent must be set to Custom LLM, so calls run on your own model.</small>
+    </label>
+    <label class="field">
+      <span>Phone number ID</span>
+      <input name="phoneNumberId" type="text" autocomplete="off" required />
+      <small>The ID ElevenLabs shows after you import your Twilio number.</small>
+    </label>
+
+    <small class="integration-secrets-note">The API key is saved to your system keychain, never to the database or .env.</small>
+
+    <p id="phone-calls-form-error" class="form-error" hidden></p>
+
+    <div class="dialog-actions">
+      <button id="phone-calls-cancel-button" class="secondary-button" type="button">Cancel</button>
+      <button id="phone-calls-connect-button" class="save-button" type="submit">Connect</button>
     </div>
   </form>
 </dialog>

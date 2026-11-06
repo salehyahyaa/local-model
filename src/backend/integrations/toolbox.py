@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 import httpx
 
 from src.backend.config import MAX_TOOL_RESULT_CHARACTERS, TOOL_TIMEOUT
-from src.backend.integrations import api_client, env_secrets
+from src.backend.integrations import api_client, env_secrets, oauth
 from src.backend.integrations.errors import McpError
 from src.backend.integrations.mcp_client import McpSession
 from src.backend.integrations.mcp_http_transport import McpHttpTransport
@@ -17,6 +17,8 @@ logger = logging.getLogger(__name__)
 
 MAX_TOOL_NAME_LENGTH = 64
 EMPTY_SCHEMA = {"type": "object", "properties": {}}
+# Longer than a normal call: the first run of a local server often has to download it.
+CONNECTION_CHECK_TIMEOUT = 120
 
 
 def make_tool_name(integration_name, action_name):
@@ -33,12 +35,26 @@ def parameters_to_schema(parameters):
     return {"type": "object", "properties": properties, "required": required}
 
 
-def create_transport(server):
+def create_transport(server, timeout=TOOL_TIMEOUT):
     if server["transport"] == "http":
         headers = env_secrets.resolve_mapping(server["headers"])
-        return McpHttpTransport(server["url"], headers, TOOL_TIMEOUT)
+        return McpHttpTransport(server["url"], headers, timeout)
     environment = env_secrets.resolve_mapping(server["env"])
-    return McpStdioTransport(server["command"], server["args"], environment, TOOL_TIMEOUT)
+    return McpStdioTransport(server["command"], server["args"], environment, timeout)
+
+
+async def check_connection(server):
+    """Connects to a server being added, so a wrong address or login fails on the form and not later in a chat."""
+    session = McpSession(create_transport(server, CONNECTION_CHECK_TIMEOUT))
+    try:
+        await asyncio.wait_for(session.open(), CONNECTION_CHECK_TIMEOUT)
+        await asyncio.wait_for(session.list_tools(), CONNECTION_CHECK_TIMEOUT)
+    except asyncio.TimeoutError as error:
+        raise McpError("The server didn't answer in time.") from error
+    except (httpx.HTTPError, OSError, ValueError) as error:
+        raise McpError(str(error) or "Couldn't reach the server.") from error
+    finally:
+        await session.close()
 
 
 def truncate(text):
@@ -124,6 +140,11 @@ def make_api_handler(integration):
 
 
 async def open_mcp_session(server):
+    try:
+        await asyncio.wait_for(oauth.refresh_if_needed(server), TOOL_TIMEOUT)
+    except (McpError, asyncio.TimeoutError) as error:
+        logger.warning("Skipping MCP server %r: %s", server["name"], error)
+        return None, []
     session = McpSession(create_transport(server))
     try:
         await asyncio.wait_for(session.open(), TOOL_TIMEOUT)

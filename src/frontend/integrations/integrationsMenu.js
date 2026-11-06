@@ -1,6 +1,7 @@
 import * as integrationsApi from "./integrationsApi.js";
 import { openIntegrationForm } from "./integrationForm.js";
 import { openGmailForm } from "./gmailForm.js";
+import { openPhoneCallsForm } from "./phoneCallsForm.js";
 import { attachUserFiles } from "../chat/attachment.js";
 
 const addButton = document.getElementById("add-button");
@@ -9,6 +10,8 @@ const list = document.getElementById("integrations-list");
 const message = document.getElementById("integrations-message");
 const addIntegrationButton = document.getElementById("add-integration-button");
 const addApiButton = document.getElementById("add-api-button");
+const addPhoneCallsButton = document.getElementById("add-phone-calls-button");
+const TARGET_PREFIXES = { mcp: "MCP", api: "API", phone: "Calling for" };
 
 let gmailConnected = false;
 const addFilesButton = document.getElementById("add-files-button");
@@ -85,7 +88,7 @@ function createDetails(integration) {
   name.textContent = integration.name;
   const target = document.createElement("div");
   target.className = "integration-target";
-  target.textContent = integration.kind === "mcp" ? `MCP · ${integration.target}` : `API · ${integration.target}`;
+  target.textContent = `${TARGET_PREFIXES[integration.kind]} · ${integration.target}`;
   target.title = integration.target;
   details.append(name, target);
   return [details];
@@ -109,8 +112,9 @@ async function refreshList() {
     showMessage(error.message);
     return;
   }
-  const allIntegrations = [...integrations.mcpServers, ...integrations.apiIntegrations];
+  const allIntegrations = [...integrations.mcpServers, ...integrations.apiIntegrations, ...integrations.phoneCalls];
   gmailConnected = allIntegrations.some((integration) => integration.provider === "gmail");
+  addPhoneCallsButton.hidden = integrations.phoneCalls.length > 0;
   for (const integration of allIntegrations) {
     list.appendChild(createIntegrationItem(integration));
   }
@@ -153,13 +157,18 @@ export function setupIntegrationsMenu() {
     if (gmailConnected) {
       openIntegrationForm(openMenu);
     } else {
-      openGmailForm(openMenu);
+      openGmailForm(openMenu, () => openIntegrationForm(openMenu));
     }
   });
 
   addApiButton.addEventListener("click", () => {
     closeMenu();
     openIntegrationForm(openMenu, "api");
+  });
+
+  addPhoneCallsButton.addEventListener("click", () => {
+    closeMenu();
+    openPhoneCallsForm(openMenu);
   });
 
   document.addEventListener("click", (event) => {

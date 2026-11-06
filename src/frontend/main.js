@@ -9,6 +9,8 @@ import { setupVoiceMode } from "./voice/voiceMode.js";
 import { setupIntegrationsMenu } from "./integrations/integrationsMenu.js";
 import { setupIntegrationForm } from "./integrations/integrationForm.js";
 import { setupGmailForm } from "./integrations/gmailForm.js";
+import { setupPhoneCallsForm } from "./integrations/phoneCallsForm.js";
+import { watchCalls } from "./calls/callWatcher.js";
 import { applySelectedModel, setupModelPicker } from "./models/modelPicker.js";
 import { setupImageDrop } from "./chat/attachment.js";
 import { setupAutostartMenu } from "./autostart/autostartMenu.js";
@@ -28,6 +30,7 @@ setupVoiceMode();
 setupIntegrationsMenu();
 setupIntegrationForm();
 setupGmailForm();
+setupPhoneCallsForm();
 setupModelPicker();
 setupImageDrop();
 setupAutostartMenu();
@@ -45,6 +48,7 @@ if (settings) {
   applyTheme(settings.theme);
   applySidebarCollapsed(settings.sidebarCollapsed);
   applySelectedModel(settings.selectedModel);
+  watchCalls();
 } else {
   addMessageBubble("assistant", `Couldn't load saved chats (${error.message}). Changes won't be saved.`);
 }

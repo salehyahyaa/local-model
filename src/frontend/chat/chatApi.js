@@ -12,11 +12,11 @@ function handleEvent(event, reply, callbacks) {
   }
 }
 
-export async function streamChatReply(messages, callbacks) {
+export async function streamChatReply(messages, conversationId, callbacks) {
   const response = await fetch("/api/chat", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ messages, canApprove: true }),
+    body: JSON.stringify({ messages, conversationId, canApprove: true }),
   });
   if (!response.ok) {
     const errorBody = await response.json().catch(() => null);

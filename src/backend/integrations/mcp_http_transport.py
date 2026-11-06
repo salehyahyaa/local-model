@@ -8,9 +8,10 @@ from src.backend.integrations.errors import McpError
 logger = logging.getLogger(__name__)
 
 
-def parse_event_stream_lines(lines):
+async def read_event_stream(lines):
+    """Yields each event as it arrives, since a server may keep the stream open after answering."""
     data_lines = []
-    for line in lines:
+    async for line in lines:
         if line.startswith("data:"):
             data_lines.append(line[5:].strip())
         elif line == "" and data_lines:
@@ -51,12 +52,13 @@ class McpHttpTransport:
         async with self.client.stream("POST", self.url, json=message, headers=self.build_headers()) as response:
             if response.status_code >= 400:
                 await response.aread()
+                if response.status_code in (401, 403):
+                    raise McpError(f"Server answered HTTP {response.status_code}. Check the login type and details.")
                 raise McpError(f"Server answered HTTP {response.status_code}")
             self.session_id = response.headers.get("mcp-session-id", self.session_id)
 
             if response.headers.get("content-type", "").startswith("text/event-stream"):
-                lines = [line async for line in response.aiter_lines()]
-                for event in parse_event_stream_lines(lines):
+                async for event in read_event_stream(response.aiter_lines()):
                     if event.get("id") == message["id"]:
                         return event
                 raise McpError("The server closed the stream without answering")

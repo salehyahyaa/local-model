@@ -11,6 +11,7 @@ import {
 } from "./messagesView.js";
 import { clearAttachedDocuments, readAttachedDocuments } from "./attachment.js";
 import { getSelectedModelId, IMAGE_GENERATION_MODEL_ID } from "../models/modelPicker.js";
+import { watchCalls } from "../calls/callWatcher.js";
 
 export async function sendMessage(text) {
   const chat = chatStore.getActiveChat();
@@ -35,7 +36,7 @@ export async function sendMessage(text) {
   replyBubble.classList.add("pending");
 
   try {
-    const replyText = await streamChatReply(chat.messages, {
+    const replyText = await streamChatReply(chat.messages, chat.id, {
       onText: (partialReply) => {
         replyBubble.textContent = partialReply;
         scrollToBottom();
@@ -44,6 +45,7 @@ export async function sendMessage(text) {
       onApproval: (approval) => addApprovalCard(approval, replyBubble),
     });
     chatStore.addMessage(chat, "assistant", replyText, model);
+    watchCalls();
     return replyText;
   } catch (error) {
     // Your message (and any PDFs) stay saved; only the reply failed.

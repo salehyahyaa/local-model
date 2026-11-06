@@ -5,7 +5,7 @@ import httpx
 import pytest
 
 from src.backend.integrations.errors import McpError
-from src.backend.integrations.mcp_http_transport import McpHttpTransport, parse_event_stream_lines
+from src.backend.integrations.mcp_http_transport import McpHttpTransport, read_event_stream
 
 
 def make_transport(handler):
@@ -14,9 +14,30 @@ def make_transport(handler):
     return transport
 
 
-def test_parse_event_stream_lines():
-    lines = ["event: message", 'data: {"id": 1}', "", 'data: {"id": 2,', 'data: "ok": true}', ""]
-    assert list(parse_event_stream_lines(lines)) == [{"id": 1}, {"id": 2, "ok": True}]
+def test_read_event_stream():
+    async def lines():
+        for line in ["event: message", 'data: {"id": 1}', "", 'data: {"id": 2,', 'data: "ok": true}', ""]:
+            yield line
+
+    async def scenario():
+        return [event async for event in read_event_stream(lines())]
+
+    assert asyncio.run(scenario()) == [{"id": 1}, {"id": 2, "ok": True}]
+
+
+def test_answer_is_returned_even_if_the_server_keeps_the_stream_open():
+    class EndlessStream(httpx.AsyncByteStream):
+        async def __aiter__(self):
+            yield b'data: {"jsonrpc": "2.0", "id": 7, "result": {"tools": []}}\n\n'
+            await asyncio.Event().wait()
+
+    def handler(request):
+        return httpx.Response(200, stream=EndlessStream(), headers={"Content-Type": "text/event-stream"})
+
+    transport = make_transport(handler)
+    message = {"jsonrpc": "2.0", "id": 7, "method": "tools/list"}
+    response = asyncio.run(asyncio.wait_for(transport.send_request(message), 2))
+    assert response["result"] == {"tools": []}
 
 
 def test_json_response_and_session_header():

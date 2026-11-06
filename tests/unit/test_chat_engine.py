@@ -94,7 +94,8 @@ def test_model_is_told_to_use_tools_only_when_asked(tools):
     model = FakeModel([])
     run(model)
     assert model.seen_messages[0][0] == {"role": "system", "content": system_prompt.DEFAULT_SYSTEM_PROMPT}
-    assert model.seen_messages[0][1:] == USER_MESSAGE
+    assert "current date and time" in model.seen_messages[0][1]["content"]
+    assert model.seen_messages[0][2:] == USER_MESSAGE
 
 
 def use_saved_prompt(monkeypatch, saved):
@@ -111,13 +112,14 @@ def test_model_gets_the_prompt_the_owner_saved(tools, monkeypatch):
     assert model.seen_messages[0][0] == {"role": "system", "content": "Be brief."}
 
 
-def test_cleared_prompt_sends_no_system_message_and_keeps_approval(tools, monkeypatch):
+def test_cleared_prompt_sends_only_the_date_and_keeps_approval(tools, monkeypatch):
     use_saved_prompt(monkeypatch, "")
     model = FakeModel([tool_call("Gmail__send_email", SEND_ARGUMENTS)], [])
 
     run(model, answer=False)
 
-    assert model.seen_messages[0] == USER_MESSAGE
+    assert "current date and time" in model.seen_messages[0][0]["content"]
+    assert model.seen_messages[0][1:] == USER_MESSAGE
     assert tools == []
 
 

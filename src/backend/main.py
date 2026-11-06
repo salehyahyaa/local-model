@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import re
 from contextlib import asynccontextmanager
@@ -8,6 +9,8 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from src.backend import db
+from src.backend.appointment_calls import poller as appointment_call_poller
+from src.backend.appointment_calls.routes import router as appointment_calls_router
 from src.backend.attachments import documents
 from src.backend.attachments.routes import router as attachments_router
 from src.backend.autostart.routes import router as autostart_router
@@ -17,6 +20,7 @@ from src.backend.integration_routes import router as integration_router
 from src.backend.logging_config import setup_logging
 from src.backend.models.image_generation.routes import ExposeConnectionEvents
 from src.backend.models.image_generation.routes import router as image_generation_router
+from src.backend.models.openai_temporary import model as openai_temporary
 from src.backend.request_logging import log_requests
 from src.backend.routes import router
 from src.backend.settings_panel.routes import router as settings_panel_router
@@ -30,13 +34,17 @@ HTML_INCLUDE = re.compile(r"<!-- include (\S+) -->")
 
 @asynccontextmanager
 async def lifespan(app):
+    openai_temporary.connect()
     await db.connect()
     if db.pool is not None:
         try:
             await documents.delete_orphaned_files()
         except Exception:
             logging.getLogger(__name__).exception("Could not clean up orphaned document files")
+    call_results = asyncio.create_task(appointment_call_poller.run()) if db.pool is not None else None
     yield
+    if call_results is not None:
+        call_results.cancel()
     await db.disconnect()
 
 
@@ -57,6 +65,7 @@ app.include_router(chat_router)
 app.include_router(settings_panel_router)
 app.include_router(attachments_router)
 app.include_router(autostart_router)
+app.include_router(appointment_calls_router)
 app.include_router(integration_router)
 app.include_router(image_generation_router)
 

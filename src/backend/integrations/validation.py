@@ -91,6 +91,19 @@ def validate_mcp_server(body):
         url = body.get("url")
         if not is_http_url(url):
             return None, "URL must start with http:// or https://."
+        if body.get("authType") == "oauth":
+            client_id = body.get("clientId") or ""
+            client_secret = body.get("clientSecret") or ""
+            if not isinstance(client_id, str) or not isinstance(client_secret, str):
+                return None, "Invalid client ID or secret."
+            return {
+                "name": name,
+                "transport": "http",
+                "url": url.strip(),
+                "authType": "oauth",
+                "clientId": client_id.strip(),
+                "clientSecret": client_secret.strip(),
+            }, None
         auth, error = validate_auth(body)
         if error:
             return None, error
@@ -105,6 +118,9 @@ def validate_mcp_server(body):
             return None, "Arguments must be text."
         try:
             arguments = shlex.split(arguments_text)
+            # The form takes one line, like "npx -y some-server"; a path with spaces needs quotes.
+            if not arguments:
+                command, *arguments = shlex.split(command)
         except ValueError:
             return None, "Arguments have an unclosed quote."
         environment, error = validate_environment(body.get("env"))

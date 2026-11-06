@@ -4,7 +4,7 @@ import os
 import pytest
 
 from src.backend import config
-from src.backend.integrations import api_store, mcp_store, service
+from src.backend.integrations import api_store, mcp_store, service, toolbox
 from src.backend.integrations.errors import DuplicateNameError
 
 
@@ -22,6 +22,11 @@ def env_file(tmp_path, monkeypatch):
 @pytest.fixture
 def fake_stores(monkeypatch):
     saved = {"mcp": [], "api": []}
+
+    async def check_connection(server):
+        pass
+
+    monkeypatch.setattr(toolbox, "check_connection", check_connection)
 
     async def create_server(record):
         if any(server["name"] == record["name"] for server in saved["mcp"]):

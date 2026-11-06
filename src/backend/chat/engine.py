@@ -2,7 +2,9 @@
 
 import json
 import logging
+from datetime import datetime
 
+from src.backend.appointment_calls import tool as appointment_call_tool
 from src.backend.chat import approvals, system_prompt
 from src.backend.chat.model_slot import ModelError
 from src.backend.integrations import service
@@ -35,12 +37,20 @@ def tool_message(call, result):
     return {"role": "tool", "tool_call_id": call["id"], "content": result}
 
 
-async def run_chat(messages, model, can_approve):
+def current_time_message(now=None):
+    """Models don't know today's date, and need it to work out words like "tomorrow"."""
+    now = now or datetime.now().astimezone()
+    return {"role": "system", "content": f"The owner's current date and time: {now:%A, %B %d, %Y, %H:%M (UTC%z)}."}
+
+
+async def run_chat(messages, model, can_approve, conversation_id=None):
     """Yields the events the chat page reads: text, tool, approval and error."""
     mcp_servers, api_integrations = await service.load_enabled_integrations()
     async with open_toolbox(mcp_servers, api_integrations) as toolbox:
+        await appointment_call_tool.register(toolbox, conversation_id)
         prompt = await system_prompt.load_for_chat()
-        conversation = [{"role": "system", "content": prompt}, *messages] if prompt.strip() else list(messages)
+        owner_prompt = [{"role": "system", "content": prompt}] if prompt.strip() else []
+        conversation = [*owner_prompt, current_time_message(), *messages]
         for _ in range(MAX_TOOL_ROUNDS):
             text = ""
             calls = []

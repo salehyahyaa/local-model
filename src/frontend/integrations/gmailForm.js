@@ -6,7 +6,10 @@ const errorText = document.getElementById("gmail-form-error");
 const cancelButton = document.getElementById("gmail-cancel-button");
 const connectButton = document.getElementById("gmail-connect-button");
 
+const otherButton = document.getElementById("gmail-other-button");
+
 let onConnected = () => {};
+let onChooseOther = () => {};
 
 function showError(message) {
   errorText.textContent = message;
@@ -37,8 +40,9 @@ async function handleSubmit(event) {
   }
 }
 
-export function openGmailForm(handleConnected) {
+export function openGmailForm(handleConnected, handleChooseOther) {
   onConnected = handleConnected;
+  onChooseOther = handleChooseOther;
   form.reset();
   showError("");
   dialog.showModal();
@@ -48,4 +52,8 @@ export function openGmailForm(handleConnected) {
 export function setupGmailForm() {
   form.addEventListener("submit", handleSubmit);
   cancelButton.addEventListener("click", () => dialog.close());
+  otherButton.addEventListener("click", () => {
+    dialog.close();
+    onChooseOther();
+  });
 }

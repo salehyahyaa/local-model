@@ -1,17 +1,7 @@
 import json
-import asyncpg
 from src.backend import db
 
 RECENT_CALLS = 20
-ACTIVE_CALL_INDEX = "appointment_calls_one_active_idx"
-
-
-class CallAlreadyActive(Exception):
-    pass
-
-
-class DailyLimitReached(Exception):
-    pass
 
 
 async def conversation_exists(conversation_id):
@@ -21,34 +11,23 @@ async def conversation_exists(conversation_id):
     )
 
 
-async def reserve_call(call, conversation_id, daily_limit):
+async def reserve_call(call, conversation_id):
     """Saves the call before dialing, so a crash can't leave a real call the app doesn't know about."""
     pool = db.require_pool()
-    try:
-        call_id = await pool.fetchval(
-            """INSERT INTO appointment_calls
-                   (user_id, conversation_id, contact_name, phone_number, reason, allowed_slots, timezone, deadline)
-               SELECT $1::bigint, $2::bigint, $3::text, $4::text, $5::text, $6::jsonb, $7::text, $8::timestamptz
-               WHERE (SELECT count(*) FROM appointment_calls
-                      WHERE user_id = $1::bigint AND created_at > now() - interval '24 hours') < $9::bigint
-               RETURNING id""",
-            db.user_id,
-            conversation_id,
-            call["contact_name"],
-            call["phone_number"],
-            call["reason"],
-            json.dumps(call["allowed_slots"]),
-            call["timezone"],
-            call["deadline"],
-            daily_limit,
-        )
-    except asyncpg.UniqueViolationError as error:
-        if error.constraint_name == ACTIVE_CALL_INDEX:
-            raise CallAlreadyActive from error
-        raise
-    if call_id is None:
-        raise DailyLimitReached
-    return call_id
+    return await pool.fetchval(
+        """INSERT INTO appointment_calls
+               (user_id, conversation_id, contact_name, phone_number, reason, allowed_slots, timezone, deadline)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+           RETURNING id""",
+        db.user_id,
+        conversation_id,
+        call["contact_name"],
+        call["phone_number"],
+        call["reason"],
+        json.dumps(call["allowed_slots"]),
+        call["timezone"],
+        call["deadline"],
+    )
 
 
 async def save_call_ids(call_id, conversation_id, call_sid):

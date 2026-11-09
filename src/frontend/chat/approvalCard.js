@@ -1,15 +1,45 @@
 import { requestJson } from "../shared/httpClient.js";
 import { scrollToBottom } from "./messagesView.js";
 
+const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+const DATE_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/;
+
+// Turns ISO dates and times from any tool into "Thu, Nov 12, 6:30 PM". Anything else is shown as sent.
+function readableValue(value) {
+  if (typeof value !== "string") return JSON.stringify(value);
+  const text = value.trim();
+  if (DATE_ONLY.test(text)) {
+    return new Date(`${text}T00:00:00Z`).toLocaleDateString(undefined, {
+      weekday: "short", month: "short", day: "numeric", year: "numeric", timeZone: "UTC",
+    });
+  }
+  if (DATE_TIME.test(text)) {
+    return new Date(text).toLocaleString(undefined, {
+      weekday: "short", month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit",
+    });
+  }
+  return value;
+}
+
+// "create_event" → "Create event", so code names read like words.
+function readableName(name) {
+  const words = name.replace(/_/g, " ");
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+function readableTitle(label) {
+  return label.replace(/\b[A-Za-z0-9]+(?:_[A-Za-z0-9]+)+\b/g, readableName);
+}
+
 function createDetailRow(name, value) {
   const row = document.createElement("div");
   row.className = "approval-detail";
   const label = document.createElement("span");
   label.className = "approval-detail-name";
-  label.textContent = name;
+  label.textContent = readableName(name);
   const content = document.createElement("span");
   content.className = "approval-detail-value";
-  content.textContent = typeof value === "string" ? value : JSON.stringify(value);
+  content.textContent = readableValue(value);
   row.append(label, content);
   return row;
 }
@@ -60,7 +90,7 @@ export function addApprovalCard(approval, beforeElement) {
 
   const title = document.createElement("div");
   title.className = "approval-title";
-  title.textContent = `Approve ${approval.label}?`;
+  title.textContent = `Approve ${readableTitle(approval.label)}?`;
   card.appendChild(title);
   for (const [name, value] of Object.entries(approval.details)) {
     card.appendChild(createDetailRow(name, value));

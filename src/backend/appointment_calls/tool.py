@@ -8,7 +8,6 @@ import httpx
 from src.backend import db
 from src.backend.appointment_calls import client, connection, outcome, store
 from src.backend.appointment_calls.validation import APPOINTMENT, RESERVATION, validate_call
-from src.backend.config import APPOINTMENT_CALL_DAILY_LIMIT
 
 logger = logging.getLogger(__name__)
 
@@ -92,13 +91,7 @@ async def place_call(arguments, conversation_id):
         logger.warning("Could not check the ElevenLabs agent before a call")
         return f"{NOT_PLACED}Couldn't check the agent with ElevenLabs."
 
-    try:
-        call_id = await store.reserve_call(call, conversation_id, APPOINTMENT_CALL_DAILY_LIMIT)
-    except store.CallAlreadyActive:
-        return f"{NOT_PLACED}Another call is still running. {DO_NOT_RETRY}"
-    except store.DailyLimitReached:
-        return f"{NOT_PLACED}The limit of {APPOINTMENT_CALL_DAILY_LIMIT} calls a day has been reached."
-
+    call_id = await store.reserve_call(call, conversation_id)
     return await dial(call_id, call, settings, api_key)
 
 

@@ -258,10 +258,8 @@ def phone(monkeypatch):
     async def conversation_exists(conversation_id):
         return conversation_id == 1
 
-    async def reserve_call(call, conversation_id, daily_limit):
+    async def reserve_call(call, conversation_id):
         record["reserved"] += 1
-        if "reserve_error" in record:
-            raise record["reserve_error"]
         return 5
 
     async def start_call(api_key, agent_id, phone_number_id, to_number, variables):
@@ -357,13 +355,6 @@ def test_agent_check_failing_never_dials(phone, monkeypatch):
     assert phone["dialed"] == []
 
 
-@pytest.mark.parametrize("error", [store.CallAlreadyActive(), store.DailyLimitReached()])
-def test_limits_never_dial(phone, error):
-    phone["reserve_error"] = error
-    assert place().startswith(tool.NOT_PLACED)
-    assert phone["dialed"] == []
-
-
 def test_refused_call_is_recorded_as_failed(phone):
     phone["dial_error"] = calls_client.CallNotPlaced("Refused.")
     assert place().startswith(tool.NOT_PLACED)
@@ -391,7 +382,7 @@ def test_database_failure_after_dialing_says_the_call_is_happening(phone, monkey
 
 
 def test_database_failure_before_dialing_is_reported(phone, monkeypatch):
-    async def broken(call, conversation_id, daily_limit):
+    async def broken(call, conversation_id):
         raise store.db.DatabaseUnavailableError("gone")
 
     monkeypatch.setattr(store, "reserve_call", broken)

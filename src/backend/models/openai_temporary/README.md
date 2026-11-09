@@ -2,6 +2,8 @@
 
 Used to test the app until the owner's own model is ready. It serves only the picker's "Model" option, never Image Generation. While it's connected, OpenAI receives chat messages and tool results, including emails if Gmail is on.
 
+The Control Panel's To Do scan also uses it in the background, without a chat. For each new email outside Gmail's Promotions and Social tabs, OpenAI receives the sender, subject and date, the titles and company names of tasks already listed, and up to 2,000 characters of the body when the rest isn't enough. Scans run every 5 minutes and cover up to 100 emails each.
+
 ## Turn it on
 
 Add your chosen model to `.env`. There is no default.

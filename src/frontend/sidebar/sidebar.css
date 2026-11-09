@@ -16,7 +16,9 @@
 }
 
 .sidebar.collapsed .sidebar-top,
-.sidebar.collapsed .sidebar-top-actions {
+.sidebar.collapsed .sidebar-top-actions,
+.sidebar.collapsed .recents-row,
+.sidebar.collapsed .recents-actions {
   display: contents;
 }
 
@@ -110,6 +112,10 @@
 
 .control-panel-button:hover { filter: brightness(1.08); }
 
+.control-panel-button.active {
+  box-shadow: 0 0 0 2px var(--sidebar), 0 0 0 3.5px #38bdf8;
+}
+
 @keyframes control-panel-shift {
   from { background-position: 0% 50%; }
   to { background-position: 100% 50%; }
@@ -125,7 +131,20 @@
   color: var(--muted-text);
 }
 
-#recents-label { padding-top: 28px; }
+.recents-row {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 2px 2px 0;
+}
+
+#recents-label { padding: 0 7px; }
+
+.recents-actions {
+  display: flex;
+  gap: 2px;
+}
 
 .chat-list {
   display: flex;
@@ -147,7 +166,7 @@
 .chat-title-button {
   flex: 1;
   min-width: 0;
-  padding: 6px 7px;
+  padding: 7.5px 7px;
   border: 0;
   background: transparent;
   text-align: left;
@@ -157,13 +176,13 @@
   text-overflow: ellipsis;
 }
 
-.pin-button {
+.pin-button,
+.chat-delete-button {
   display: none;
   align-items: center;
   justify-content: center;
   width: 26px;
   height: 26px;
-  margin-right: 4px;
   flex-shrink: 0;
   border: 0;
   border-radius: 6px;
@@ -174,7 +193,11 @@
 
 .pin-button:hover { color: var(--text); }
 
-.chat-list-item:hover .pin-button { display: inline-flex; }
+.chat-delete-button { margin-right: 4px; }
+.chat-delete-button:hover { color: #ef4444; }
+
+.chat-list-item:hover .pin-button,
+.chat-list-item:hover .chat-delete-button { display: inline-flex; }
 
 .pin-button.pinned svg { fill: currentColor; }
 

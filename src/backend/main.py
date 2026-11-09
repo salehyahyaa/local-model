@@ -24,6 +24,8 @@ from src.backend.models.openai_temporary import model as openai_temporary
 from src.backend.request_logging import log_requests
 from src.backend.routes import router
 from src.backend.settings_panel.routes import router as settings_panel_router
+from src.backend.task_tracker import poller as task_poller
+from src.backend.task_tracker.routes import router as task_tracker_router
 
 setup_logging()
 
@@ -42,9 +44,12 @@ async def lifespan(app):
         except Exception:
             logging.getLogger(__name__).exception("Could not clean up orphaned document files")
     call_results = asyncio.create_task(appointment_call_poller.run()) if db.pool is not None else None
+    task_scans = asyncio.create_task(task_poller.run()) if db.pool is not None else None
     yield
     if call_results is not None:
         call_results.cancel()
+    if task_scans is not None:
+        task_scans.cancel()
     await db.disconnect()
 
 
@@ -66,6 +71,7 @@ app.include_router(settings_panel_router)
 app.include_router(attachments_router)
 app.include_router(autostart_router)
 app.include_router(appointment_calls_router)
+app.include_router(task_tracker_router)
 app.include_router(integration_router)
 app.include_router(image_generation_router)
 

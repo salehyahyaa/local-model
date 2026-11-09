@@ -48,10 +48,12 @@ CREATE TABLE messages (
     model            TEXT,
     image_files      TEXT[] NOT NULL DEFAULT '{}',
     created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
-    telegram_message_id  BIGINT  -- only on messages sent from Telegram
+    telegram_message_id  BIGINT,  -- only on messages sent from Telegram
+    search_text      tsvector GENERATED ALWAYS AS (to_tsvector('english', left(content, 50000))) STORED
 );
 
 CREATE INDEX messages_conversation_id_idx ON messages (conversation_id);
+CREATE INDEX messages_search_text_idx ON messages USING GIN (search_text);
 
 CREATE TABLE user_settings (
     user_id                 BIGINT PRIMARY KEY REFERENCES users (user_id) ON DELETE CASCADE,
@@ -155,5 +157,56 @@ CREATE TABLE appointment_calls (
 
 CREATE INDEX appointment_calls_user_id_created_at_idx ON appointment_calls (user_id, created_at DESC);
 
--- Only one call at a time, enforced by the database so two requests can't both dial.
-CREATE UNIQUE INDEX appointment_calls_one_active_idx ON appointment_calls (user_id) WHERE status = 'calling';
+CREATE TABLE tracked_tasks (
+    id                     BIGSERIAL PRIMARY KEY,
+    user_id                BIGINT NOT NULL REFERENCES users (user_id) ON DELETE CASCADE,
+    title                  TEXT NOT NULL,
+    company                TEXT,
+    request_message_id     TEXT NOT NULL,
+    request_date           TIMESTAMPTZ NOT NULL,
+    deadline               DATE,
+    status                 TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'completed')),
+    closed_by              TEXT CHECK (closed_by IN ('email', 'manual')),
+    completion_message_id  TEXT,
+    closed_at              TIMESTAMPTZ,
+    created_at             TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at             TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (user_id, request_message_id)
+);
+
+CREATE INDEX tracked_tasks_user_id_status_idx ON tracked_tasks (user_id, status);
+
+-- Every email already handled, so nothing is processed or sent to a model twice.
+CREATE TABLE scanned_emails (
+    user_id     BIGINT NOT NULL REFERENCES users (user_id) ON DELETE CASCADE,
+    message_id  TEXT NOT NULL,
+    verdict     TEXT NOT NULL CHECK (verdict IN ('task', 'same_task', 'completion', 'neither', 'discarded')),
+    email_date  TIMESTAMPTZ NOT NULL,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (user_id, message_id)
+);
+
+CREATE TABLE task_scan_state (
+    user_id          BIGINT PRIMARY KEY REFERENCES users (user_id) ON DELETE CASCADE,
+    scanned_through  DATE,  -- the next scan starts here; stays put until a whole week is judged
+    last_scan_at     TIMESTAMPTZ,
+    waiting_count    INTEGER NOT NULL DEFAULT 0,
+    last_error       TEXT
+);
+
+-- Every time the model uses a tool, and how it ended, so it can remember what it did.
+CREATE TABLE tool_activity (
+    id               BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    conversation_id  BIGINT NOT NULL REFERENCES conversations (id) ON DELETE CASCADE,
+    label            TEXT NOT NULL,  -- e.g. "Google Calendar → create_event"
+    arguments        JSONB NOT NULL DEFAULT '{}'::jsonb,
+    outcome          TEXT NOT NULL CHECK (outcome IN ('done', 'denied', 'changed', 'failed')),
+    result           TEXT,  -- what the tool answered, cut to a maximum length
+    created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+    search_text      tsvector GENERATED ALWAYS AS (
+        to_tsvector('english', label || ' ' || arguments::text || ' ' || coalesce(result, ''))
+    ) STORED
+);
+
+CREATE INDEX tool_activity_conversation_id_idx ON tool_activity (conversation_id, id);
+CREATE INDEX tool_activity_search_text_idx ON tool_activity USING GIN (search_text);

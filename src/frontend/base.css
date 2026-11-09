@@ -8,10 +8,27 @@
   --menu-hover: #424242;
   --active: #212121;
   --composer: #1c1c1c;
-  --user-bubble: #2a3f6b;
+  --user-bubble: #0a84ff;
   --user-bubble-text: #ffffff;
   --send-button: #3f6fd8;
   --send-button-icon: #ffffff;
+  --glass-fill: rgba(255, 255, 255, 0.07);
+  --glass-fill-hover: rgba(255, 255, 255, 0.12);
+  --glass-border: rgba(255, 255, 255, 0.13);
+  --glass-shadow: 0 10px 32px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  --glass-blur: blur(26px) saturate(160%);
+  --cp-canvas: #04070f;
+  --cp-orb-opacity: 0.5;
+  --cp-secondary-text: #b4bdcc;
+  --cp-row-hover: rgba(255, 255, 255, 0.07);
+  --cp-status-fill: rgba(255, 255, 255, 0.08);
+  --cp-control-border: rgba(255, 255, 255, 0.36);
+  --cp-accent: #2563eb;
+  --cp-accent-text: #7db4ff;
+  --cp-chip-red: rgba(239, 68, 68, 0.2);
+  --cp-chip-red-text: #fca5a5;
+  --cp-chip-amber: rgba(245, 158, 11, 0.2);
+  --cp-chip-amber-text: #fcd34d;
 }
 
 :root[data-theme="light"] {
@@ -24,10 +41,27 @@
   --menu-hover: #e3e3e3;
   --active: #e3e3e3;
   --composer: #f4f4f4;
-  --user-bubble: #e8eefb;
-  --user-bubble-text: #0d0d0d;
+  --user-bubble: #007aff;
+  --user-bubble-text: #ffffff;
   --send-button: #3f6fd8;
   --send-button-icon: #ffffff;
+  --glass-fill: rgba(255, 255, 255, 0.62);
+  --glass-fill-hover: rgba(255, 255, 255, 0.82);
+  --glass-border: rgba(255, 255, 255, 0.75);
+  --glass-shadow: 0 10px 32px rgba(30, 58, 138, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  --glass-blur: blur(26px) saturate(170%);
+  --cp-canvas: #edf3ff;
+  --cp-orb-opacity: 0.32;
+  --cp-secondary-text: #4b5568;
+  --cp-row-hover: rgba(30, 58, 138, 0.07);
+  --cp-status-fill: rgba(30, 58, 138, 0.07);
+  --cp-control-border: rgba(30, 41, 59, 0.38);
+  --cp-accent: #2563eb;
+  --cp-accent-text: #1d4ed8;
+  --cp-chip-red: rgba(220, 38, 38, 0.12);
+  --cp-chip-red-text: #b91c1c;
+  --cp-chip-amber: rgba(217, 119, 6, 0.14);
+  --cp-chip-amber-text: #92400e;
 }
 
 * { box-sizing: border-box; }

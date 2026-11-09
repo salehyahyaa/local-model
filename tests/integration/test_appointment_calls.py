@@ -118,34 +118,31 @@ def test_a_call_runs_from_tool_to_result_in_the_chat(test_database_url, monkeypa
     run_with_database(test_database_url, monkeypatch, scenario)
 
 
-def test_only_one_call_runs_at_a_time(test_database_url, monkeypatch):
+def test_several_calls_can_run_at_once(test_database_url, monkeypatch):
     dialed = []
     fake_elevenlabs(monkeypatch, dialed, {"status": "in-progress"})
 
     async def scenario():
         chat_id = await connect_and_create_chat()
         place = tool.make_handler(chat_id)
-        first, second = await asyncio.gather(place(ARGUMENTS), place(ARGUMENTS))
-        assert len(dialed) == 1
-        assert sum(answer.startswith(tool.NOT_PLACED) for answer in (first, second)) == 1
+        answers = await asyncio.gather(place(ARGUMENTS), place(ARGUMENTS))
+        assert all(answer.startswith("Calling") for answer in answers)
+        assert len(dialed) == 2
+        assert [call["status"] for call in await store.list_recent_calls()] == ["calling", "calling"]
 
     run_with_database(test_database_url, monkeypatch, scenario)
 
 
-def test_daily_limit_holds(test_database_url, monkeypatch):
+def test_there_is_no_daily_limit(test_database_url, monkeypatch):
     dialed = []
-    fake_elevenlabs(monkeypatch, dialed)
-    monkeypatch.setattr(tool, "APPOINTMENT_CALL_DAILY_LIMIT", 2)
+    fake_elevenlabs(monkeypatch, dialed, {"status": "in-progress"})
 
     async def scenario():
         chat_id = await connect_and_create_chat()
         place = tool.make_handler(chat_id)
-        for _ in range(2):
+        for _ in range(11):
             assert (await place(ARGUMENTS)).startswith("Calling")
-            await db.pool.execute("UPDATE appointment_calls SET status = 'not_booked'")
-        answer = await place(ARGUMENTS)
-        assert "limit of 2 calls" in answer
-        assert len(dialed) == 2
+        assert len(dialed) == 11
 
     run_with_database(test_database_url, monkeypatch, scenario)
 

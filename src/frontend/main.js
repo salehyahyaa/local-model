@@ -16,6 +16,7 @@ import { applySelectedModel, setupModelPicker } from "./models/modelPicker.js";
 import { setupImageDrop } from "./chat/attachment.js";
 import { setupAutostartMenu } from "./autostart/autostartMenu.js";
 import { setupSettingsPanel } from "./settings/settingsPanel.js";
+import { setupControlPanel } from "./controlpanel/controlPanel.js";
 
 chatStore.subscribe("chatsChanged", renderChatList);
 chatStore.subscribe("activeChatChanged", () => {
@@ -37,6 +38,7 @@ setupModelPicker();
 setupImageDrop();
 setupAutostartMenu();
 setupSettingsPanel();
+setupControlPanel();
 
 let hasShownSaveError = false;
 chatStore.subscribe("saveFailed", (error) => {

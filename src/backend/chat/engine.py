@@ -7,8 +7,9 @@ from datetime import datetime
 from src.backend.appointment_calls import tool as appointment_call_tool
 from src.backend.chat import approvals, system_prompt
 from src.backend.chat.model_slot import ModelError
+from src.backend.chat_memory import activity, search
 from src.backend.integrations import service
-from src.backend.integrations.toolbox import open_toolbox, read_arguments
+from src.backend.integrations.toolbox import is_error_result, open_toolbox, read_arguments
 
 logger = logging.getLogger(__name__)
 
@@ -60,14 +61,24 @@ async def run_chat(messages, model, can_approve, conversation_id=None):
     mcp_servers, api_integrations = await service.load_enabled_integrations()
     async with open_toolbox(mcp_servers, api_integrations) as toolbox:
         await appointment_call_tool.register(toolbox, conversation_id)
+        search.register(toolbox)
         prompt = await system_prompt.load_for_chat()
         owner_prompt = [{"role": "system", "content": prompt}] if prompt.strip() else []
         conversation = [
             *owner_prompt,
             current_time_message(),
             *connections_messages(mcp_servers, api_integrations),
+            *activity.actions_message(await activity.load(conversation_id)),
             *messages,
         ]
+
+        async def remember(call, arguments, outcome, result):
+            label = toolbox.label_for(call["name"])
+            # Searching memory isn't something the owner asked to be remembered, and would only clutter it.
+            if label == search.LABEL:
+                return
+            await activity.record(conversation_id, label, arguments, outcome, result)
+
         for _ in range(MAX_TOOL_ROUNDS):
             text = ""
             calls = []
@@ -90,13 +101,15 @@ async def run_chat(messages, model, can_approve, conversation_id=None):
             follow_up = None
             for call in calls:
                 # Every tool call needs a result before the owner's message can follow, but none may run now.
+                arguments = read_arguments(call["arguments"])
                 if follow_up is not None:
                     conversation.append(tool_message(call, OWNER_SENT_A_MESSAGE))
+                    await remember(call, arguments, activity.CHANGED, None)
                     continue
-                arguments = read_arguments(call["arguments"])
                 if toolbox.needs_approval(call["name"]):
                     if not can_approve:
                         conversation.append(tool_message(call, CANNOT_APPROVE_HERE))
+                        await remember(call, arguments, activity.DENIED, CANNOT_APPROVE_HERE)
                         continue
                     approval_id, decision = approvals.create()
                     yield {
@@ -109,14 +122,18 @@ async def run_chat(messages, model, can_approve, conversation_id=None):
                     if answer.follow_up is not None:
                         follow_up = answer.follow_up
                         conversation.append(tool_message(call, OWNER_SENT_A_MESSAGE))
+                        await remember(call, arguments, activity.CHANGED, None)
                         continue
                     if not answer.approved:
                         conversation.append(tool_message(call, NOT_APPROVED))
+                        await remember(call, arguments, activity.DENIED, None)
                         continue
 
                 label, result = await toolbox.call(call["name"], arguments)
                 yield {"type": "tool", "label": label}
                 conversation.append(tool_message(call, result))
+                outcome = activity.FAILED if is_error_result(result) else activity.DONE
+                await remember(call, arguments, outcome, result)
 
             if follow_up is not None:
                 conversation.append({"role": "user", "content": follow_up})

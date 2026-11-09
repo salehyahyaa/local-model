@@ -5,7 +5,7 @@ import { createSpeechDetector } from "./speechDetector.js";
 import { speak, stopSpeaking } from "./speechOutput.js";
 import { openSpeechStream } from "./speechInput.js";
 import { sendMessage } from "../chat/conversation.js";
-import { addMessageBubble, scrollToBottom } from "../chat/messagesView.js";
+import { addMessageBubble, scrollToBottom, setBubbleText } from "../chat/messagesView.js";
 
 const voiceButton = document.getElementById("voice-button");
 const muteButton = document.getElementById("mute-button");
@@ -36,7 +36,7 @@ function showLiveText(text) {
   if (!liveBubble) {
     liveBubble = addMessageBubble("user", "");
   }
-  liveBubble.textContent = text;
+  setBubbleText(liveBubble, text);
   scrollToBottom();
 }
 

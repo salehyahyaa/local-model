@@ -64,3 +64,19 @@ Not done yet (options)
 - Scan each upload with ClamAV before saving it (needs a new dependency and a background service).
 - Flag or strip risky PDF features (JavaScript, launch actions, embedded files).
 - Check fingerprints against a known-malware lookup service (sends hashes to a third party).
+
+
+
+
+
+
+------------------------------------------------------------------
+So far we have set up the standards stuff for the system. PSQL, Python, saving chats, QA/UX/UX, etc 
+Now, we will get into the more advnaced stuff and things.
+
+
+# MODEL REMBERING PAST INFORMATION | WE WHERE NOT ABLE TO RECALL CHATS
+- so what we did about that was start storing chats/conversations to be able to remeber them coupled with actios performaed, we are able to identify an actions via the logic that whenever a tool is used counts as an action preformed
+  We also save actions to the DB to in the future recall X action using a search tool to word index the db (using words from ur request)to find the best matching results
+
+  We then use RAG for vectorized embeddings to lookup same || similar information to be able to refernce to anything no matter the size

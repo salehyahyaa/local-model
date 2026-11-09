@@ -55,7 +55,8 @@ def list_services():
 
 
 def describe_integration(integration):
-    return {"name": integration["name"], "detail": integration["target"], "isConnected": integration["enabled"]}
+    return {"name": integration["name"], "detail": integration["target"], "isConnected": integration["enabled"],
+            "provider": integration.get("provider")}
 
 
 async def list_integrations():

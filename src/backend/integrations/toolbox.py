@@ -57,6 +57,11 @@ async def check_connection(server):
         await session.close()
 
 
+def is_error_result(result):
+    """Every way a tool can fail comes back as text starting with "Error:"."""
+    return isinstance(result, str) and result.startswith("Error:")
+
+
 def truncate(text):
     if len(text) <= MAX_TOOL_RESULT_CHARACTERS:
         return text

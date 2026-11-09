@@ -232,16 +232,20 @@
 
 .approval-detail {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: baseline;
+  gap: 16px;
 }
 
 .approval-detail-name {
+  flex: 0 0 96px;
   color: var(--muted-text);
   font-size: 12px;
+  overflow-wrap: anywhere;
 }
 
 .approval-detail-value {
+  flex: 1;
+  min-width: 0;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }

@@ -14,7 +14,7 @@ NETWORK_TIMEOUT = 20
 MAX_MESSAGES = 50
 DEFAULT_QUERY = "in:inbox"
 SKIPPED_HTML_TAGS = {"script", "style", "head"}
-HEADER_FIELDS = "BODY.PEEK[HEADER.FIELDS (FROM TO SUBJECT DATE)]"
+HEADER_FIELDS = "BODY.PEEK[HEADER.FIELDS (FROM TO SUBJECT DATE MESSAGE-ID)]"
 ID_PATTERN = re.compile(r"^[0-9]+$")
 UID_PATTERN = re.compile(rb"\bUID ([0-9]+)")
 ALL_MAIL_PATTERN = re.compile(rb'\\All\b.*" ("[^"]+"|\S+)\s*$')
@@ -109,6 +109,7 @@ def describe_headers(fetched):
         "to": str(headers["to"] or ""),
         "subject": str(headers["subject"] or ""),
         "date": str(headers["date"] or ""),
+        "message_id": str(headers["message-id"] or "").strip(),
         "unread": b"\\Seen" not in fetched["metadata"],
     }
 

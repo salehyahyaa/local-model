@@ -55,6 +55,42 @@
   max-width: 100%;
 }
 
+.message .message-copy {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+}
+
+.message.assistant .message-copy {
+  display: flex;
+  margin: 6px 0 0 -5px;
+}
+
+.message.user {
+  position: relative;
+}
+
+/* Sits just below the bubble with no gap, so the pointer can reach it without losing the hover. */
+.message.user .message-copy {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.message.user:hover .message-copy,
+.message.user .message-copy:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Nothing to copy yet, or nothing but images. */
+.message.pending .message-copy,
+.message .message-text:empty ~ .message-copy {
+  display: none;
+}
+
 .message-image {
   display: block;
   max-width: 100%;

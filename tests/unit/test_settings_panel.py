@@ -81,7 +81,7 @@ def by_name(items):
 def test_connections_list_everything_and_never_a_secret(telegram_on, monkeypatch):
     async def fake_list():
         return {
-            "mcpServers": [{"name": "Gmail", "target": "me@gmail.com", "enabled": True}],
+            "mcpServers": [{"name": "Gmail", "target": "me@gmail.com", "enabled": True, "provider": "gmail"}],
             "apiIntegrations": [{"name": "Weather", "target": "https://w.example.com", "enabled": False}],
         }
 
@@ -91,8 +91,8 @@ def test_connections_list_everything_and_never_a_secret(telegram_on, monkeypatch
     assert SECRET_TOKEN not in response.text
     body = response.json()
     assert by_name(body["integrations"]) == {
-        "Gmail": {"name": "Gmail", "detail": "me@gmail.com", "isConnected": True},
-        "Weather": {"name": "Weather", "detail": "https://w.example.com", "isConnected": False},
+        "Gmail": {"name": "Gmail", "detail": "me@gmail.com", "isConnected": True, "provider": "gmail"},
+        "Weather": {"name": "Weather", "detail": "https://w.example.com", "isConnected": False, "provider": None},
     }
     services = by_name(body["services"])
     assert services["Telegram bot"] == {

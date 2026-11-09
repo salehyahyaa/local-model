@@ -1,4 +1,5 @@
 import { requestJson } from "../shared/httpClient.js";
+import { createLogo, createServiceLogo } from "../integrations/logos.js";
 
 const openButton = document.getElementById("settings-button");
 const dialog = document.getElementById("settings-dialog");
@@ -17,7 +18,7 @@ function showError(message) {
   errorText.hidden = !message;
 }
 
-function createItem(connection) {
+function createItem(connection, logo) {
   const item = document.createElement("div");
   item.className = "settings-item";
   const dot = document.createElement("span");
@@ -31,13 +32,13 @@ function createItem(connection) {
   detail.className = "settings-item-detail";
   detail.textContent = connection.detail;
   details.append(name, detail);
-  item.append(dot, details);
+  item.append(dot, logo, details);
   return item;
 }
 
-function renderList(list, connections, emptyText) {
+function renderList(list, connections, emptyText, logoFor) {
   if (connections.length > 0) {
-    list.replaceChildren(...connections.map(createItem));
+    list.replaceChildren(...connections.map((connection) => createItem(connection, logoFor(connection))));
     return;
   }
   const empty = document.createElement("div");
@@ -74,8 +75,10 @@ async function loadPrompt() {
 async function loadConnections() {
   try {
     const { services, integrations } = await requestJson("GET", "/api/connections");
-    renderList(integrationsList, integrations, "None yet. Add one from the + button.");
-    renderList(servicesList, services, "Nothing connected.");
+    renderList(integrationsList, integrations, "None yet. Add one from the + button.", ({ name, provider, detail }) =>
+      createLogo({ name, provider, target: detail }),
+    );
+    renderList(servicesList, services, "Nothing connected.", ({ name }) => createServiceLogo(name));
   } catch (error) {
     showError(error.message);
   }

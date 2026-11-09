@@ -1,0 +1,32 @@
+<section id="control-panel" class="control-panel" aria-labelledby="control-panel-title" hidden>
+  <div class="cp-backdrop" aria-hidden="true">
+    <span class="cp-orb cp-orb-one"></span>
+    <span class="cp-orb cp-orb-two"></span>
+    <span class="cp-orb cp-orb-three"></span>
+  </div>
+
+  <div class="cp-scroll">
+    <div class="cp-content">
+      <header class="cp-header">
+        <div>
+          <h1 id="control-panel-title" class="cp-title">Control Panel</h1>
+          <p id="cp-summary" class="cp-summary" aria-live="polite">Loading your To Do list…</p>
+        </div>
+        <span id="cp-last-scan" class="cp-last-scan"></span>
+      </header>
+
+      <section class="cp-card cp-todo" aria-labelledby="cp-todo-title">
+        <div class="cp-card-header">
+          <h2 id="cp-todo-title" class="cp-card-title">To Do</h2>
+          <span id="cp-todo-count" class="cp-count" hidden></span>
+        </div>
+        <p id="cp-todo-status" class="cp-status" role="status" hidden></p>
+        <ul id="cp-todo-list" class="cp-tasks"></ul>
+        <details id="cp-completed" class="cp-completed" hidden>
+          <summary>Recently completed <span id="cp-completed-count" class="cp-muted"></span></summary>
+          <ul id="cp-completed-list" class="cp-tasks"></ul>
+        </details>
+      </section>
+    </div>
+  </div>
+</section>

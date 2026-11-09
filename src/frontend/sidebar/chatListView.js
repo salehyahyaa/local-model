@@ -1,5 +1,5 @@
 import * as chatStore from "../chat/chatStore.js";
-import { pinIconSvg } from "./icons.js";
+import { deleteIconSvg, pinIconSvg } from "./icons.js";
 
 const chatList = document.getElementById("chat-list");
 const pinnedList = document.getElementById("pinned-list");
@@ -73,7 +73,7 @@ function createChatListItem(chat) {
   if (chat.id === renamingChatId) {
     chatListItem.appendChild(createRenameInput(chat));
   } else {
-    chatListItem.append(createTitleButton(chat), createPinButton(chat));
+    chatListItem.append(createTitleButton(chat), createPinButton(chat), createDeleteButton(chat));
   }
   return chatListItem;
 }
@@ -101,6 +101,16 @@ function createPinButton(chat) {
   pinButton.innerHTML = pinIconSvg;
   pinButton.addEventListener("click", () => chatStore.togglePin(chat.id));
   return pinButton;
+}
+
+function createDeleteButton(chat) {
+  const deleteButton = document.createElement("button");
+  deleteButton.type = "button";
+  deleteButton.className = "chat-delete-button";
+  deleteButton.title = "Delete";
+  deleteButton.innerHTML = deleteIconSvg;
+  deleteButton.addEventListener("click", () => chatStore.deleteChat(chat.id));
+  return deleteButton;
 }
 
 function createRenameInput(chat) {

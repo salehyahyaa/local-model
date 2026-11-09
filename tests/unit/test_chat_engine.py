@@ -3,13 +3,16 @@
 import asyncio
 import json
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 
 import httpx
 import pytest
 from fastapi.testclient import TestClient
 
+from src.backend import db
 from src.backend.chat import approvals, engine, model_slot, system_prompt
 from src.backend.chat.model_slot import ModelError
+from src.backend.chat_memory import activity, search
 from src.backend.integrations import service, toolbox
 from src.backend.integrations.toolbox import Toolbox
 from src.backend.main import app
@@ -431,3 +434,125 @@ def test_real_gmail_server_only_lets_reading_skip_approval(monkeypatch):
         "Gmail__trash_email": True,
         "Gmail__send_email": True,
     }
+
+
+# Saved tool actions
+
+
+@pytest.fixture
+def saved_actions(monkeypatch):
+    saved = []
+
+    async def save(conversation_id, label, arguments, outcome, result=None):
+        saved.append((conversation_id, label, arguments, outcome, result))
+
+    async def list_recent(conversation_id):
+        return []
+
+    monkeypatch.setattr(activity, "save", save)
+    monkeypatch.setattr(activity, "list_recent", list_recent)
+    return saved
+
+
+def run_in_chat(model, answer=None, follow_up=None, can_approve=True):
+    async def scenario():
+        events = engine.run_chat(USER_MESSAGE, model, can_approve, conversation_id=5)
+        async for event in events:
+            if event["type"] == "approval":
+                if follow_up is not None:
+                    approvals.send_follow_up(event["id"], follow_up)
+                else:
+                    approvals.resolve(event["id"], answer)
+
+    asyncio.run(scenario())
+
+
+def test_every_tool_use_is_saved_with_how_it_ended(tools, saved_actions):
+    model = FakeModel([tool_call("Gmail__search_email", {"query": "x"})], [tool_call("Gmail__send_email", SEND_ARGUMENTS)], [])
+    run_in_chat(model, answer=True)
+    assert saved_actions == [
+        (5, "Gmail → search_email", {"query": "x"}, activity.DONE, "search done"),
+        (5, "Gmail → send_email", SEND_ARGUMENTS, activity.DONE, "send done"),
+    ]
+
+
+def test_denied_changed_and_blocked_actions_are_saved_as_not_done(tools, saved_actions):
+    run_in_chat(FakeModel([tool_call("Gmail__send_email", SEND_ARGUMENTS)], []), answer=False)
+    run_in_chat(FakeModel([tool_call("Gmail__send_email", SEND_ARGUMENTS)], []), follow_up="make it Friday")
+    run_in_chat(FakeModel([tool_call("Gmail__send_email", SEND_ARGUMENTS)], []), can_approve=False)
+    assert [action[3] for action in saved_actions] == [activity.DENIED, activity.CHANGED, activity.DENIED]
+    assert tools == []
+
+
+def test_a_tool_error_is_saved_as_failed(tools, saved_actions):
+    run_in_chat(FakeModel([tool_call("Missing__tool")], []))
+    assert saved_actions[0][3] == activity.FAILED
+    assert saved_actions[0][4].startswith("Error:")
+
+
+def test_chats_without_a_saved_conversation_save_nothing(tools, saved_actions):
+    run(FakeModel([tool_call("Gmail__search_email")], []))
+    assert saved_actions == []
+
+
+def test_a_database_problem_never_stops_the_reply(tools, monkeypatch):
+    async def broken(*args, **kwargs):
+        raise db.DatabaseUnavailableError()
+
+    monkeypatch.setattr(activity, "save", broken)
+    monkeypatch.setattr(activity, "list_recent", broken)
+    model = FakeModel([tool_call("Gmail__search_email")], [{"type": "text", "text": "Found it"}])
+
+    events = asyncio.run(collect(engine.run_chat(USER_MESSAGE, model, True, conversation_id=5)))
+
+    assert events[-1] == {"type": "text", "text": "Found it"}
+
+
+def test_the_model_is_told_what_its_tools_did_earlier(tools, monkeypatch):
+    earlier = {
+        "label": "Google Calendar → create_event",
+        "arguments": {"summary": "Fogo w/Oscar"},
+        "outcome": activity.DONE,
+        "result": '{"id": "abc"}',
+        "created_at": datetime(2026, 11, 6, 15, 28, tzinfo=timezone.utc),
+    }
+
+    async def list_recent(conversation_id):
+        assert conversation_id == 5
+        return [earlier]
+
+    monkeypatch.setattr(activity, "list_recent", list_recent)
+    model = FakeModel([])
+    asyncio.run(collect(engine.run_chat(USER_MESSAGE, model, True, conversation_id=5)))
+
+    reminder = model.seen_messages[0][-2]
+    assert reminder["role"] == "system"
+    assert "Google Calendar → create_event · done" in reminder["content"]
+    assert "Fogo w/Oscar" in reminder["content"]
+    assert model.seen_messages[0][-1] == USER_MESSAGE[0]
+
+
+def test_long_details_are_shortened_for_the_model():
+    action = {
+        "label": "Gmail → read_email",
+        "arguments": {},
+        "outcome": activity.FAILED,
+        "result": "x" * 5000,
+        "created_at": datetime(2026, 11, 6, tzinfo=timezone.utc),
+    }
+    line = activity.describe(action)
+    assert "failed" in line
+    assert len(line) < 500
+
+
+def test_searching_past_chats_is_not_saved_as_an_action(tools, saved_actions, monkeypatch):
+    monkeypatch.setattr(db, "pool", object())
+
+    async def find(**kwargs):
+        return []
+
+    monkeypatch.setattr(search, "find", find)
+    model = FakeModel([tool_call("Past_chats__search_past_chats", {"query": "interview"})], [])
+    run_in_chat(model)
+    assert saved_actions == []
+    assert tool_results(model)[0].startswith("Nothing found")

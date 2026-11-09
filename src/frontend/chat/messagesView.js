@@ -16,13 +16,49 @@ export function renderMessages() {
   }
 }
 
+const copyIconSvg =
+  '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2.5"/><path d="M5 15h-.5A1.5 1.5 0 0 1 3 13.5v-9A1.5 1.5 0 0 1 4.5 3h9A1.5 1.5 0 0 1 15 4.5V5"/></svg>';
+const copiedIconSvg =
+  '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l5 5L19 7"/></svg>';
+const COPIED_ICON_MS = 1500;
+
+function createCopyButton(bubble) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "icon-button message-copy";
+  button.setAttribute("aria-label", "Copy");
+  button.title = "Copy";
+  button.innerHTML = copyIconSvg;
+  let resetTimer = null;
+  button.addEventListener("click", async () => {
+    await navigator.clipboard.writeText(bubble.querySelector(".message-text").textContent);
+    button.innerHTML = copiedIconSvg;
+    clearTimeout(resetTimer);
+    resetTimer = setTimeout(() => { button.innerHTML = copyIconSvg; }, COPIED_ICON_MS);
+  });
+  return button;
+}
+
+// Models mark bold text with ** (Markdown). Replies are shown as plain text, so the stars are dropped.
+function shownText(bubble, text) {
+  return bubble.classList.contains("assistant") ? text.replaceAll("**", "") : text;
+}
+
 export function addMessageBubble(role, text) {
   const bubble = document.createElement("div");
   bubble.className = `message ${role}`;
-  bubble.textContent = text;
+  const textElement = document.createElement("span");
+  textElement.className = "message-text";
+  textElement.textContent = shownText(bubble, text);
+  bubble.append(textElement, createCopyButton(bubble));
   messagesContainer.appendChild(bubble);
   scrollToBottom();
   return bubble;
+}
+
+/** Changes a bubble's text while keeping its copy button, images and documents. */
+export function setBubbleText(bubble, text) {
+  bubble.querySelector(".message-text").textContent = shownText(bubble, text);
 }
 
 export function addImageToBubble(bubble, imageUrl) {
@@ -31,7 +67,7 @@ export function addImageToBubble(bubble, imageUrl) {
   image.src = imageUrl;
   image.alt = "";
   image.addEventListener("load", scrollToBottom, { once: true });
-  bubble.appendChild(image);
+  bubble.querySelector(".message-copy").before(image);
 }
 
 const documentIconSvg =
@@ -49,7 +85,7 @@ export function addDocumentCard(bubble, fileName) {
   status.className = "message-document-status";
   status.textContent = "Uploading…";
   card.append(name, status);
-  bubble.appendChild(card);
+  bubble.querySelector(".message-copy").before(card);
   scrollToBottom();
   return card;
 }

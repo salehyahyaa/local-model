@@ -6,6 +6,7 @@ import {
   addMessageBubble,
   addToolNote,
   scrollToBottom,
+  setBubbleText,
   setDocumentCardFailed,
   setDocumentCardSaved,
 } from "./messagesView.js";
@@ -49,7 +50,7 @@ export async function sendMessage(text) {
   try {
     const replyText = await streamChatReply(chat.messages, chat.id, {
       onText: (partialReply) => {
-        replyBubble.textContent = partialReply;
+        setBubbleText(replyBubble, partialReply);
         scrollToBottom();
       },
       onToolUse: (label) => addToolNote(label, replyBubble),
@@ -60,7 +61,7 @@ export async function sendMessage(text) {
     return replyText;
   } catch (error) {
     // Your message (and any PDFs) stay saved; only the reply failed.
-    replyBubble.textContent = error.message;
+    setBubbleText(replyBubble, error.message);
     return null;
   } finally {
     replyBubble.classList.remove("pending");

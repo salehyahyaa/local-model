@@ -1,4 +1,5 @@
 import * as chatStore from "./chatStore.js";
+import { showWorking } from "./workingIndicator.js";
 import { streamChatReply } from "./chatApi.js";
 import { addApprovalCard, forgetWaitingApproval, replaceWaitingApproval } from "./approvalCard.js";
 import {
@@ -45,6 +46,7 @@ export async function sendMessage(text) {
 
   const replyBubble = addMessageBubble("assistant", "");
   replyBubble.classList.add("pending");
+  const hideWorking = showWorking(replyBubble);
   currentExchange = { chat, model, replyBubble };
 
   try {
@@ -64,6 +66,7 @@ export async function sendMessage(text) {
     setBubbleText(replyBubble, error.message);
     return null;
   } finally {
+    hideWorking();
     replyBubble.classList.remove("pending");
     currentExchange = null;
     chatStore.setBusy(false);

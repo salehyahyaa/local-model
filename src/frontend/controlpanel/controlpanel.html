@@ -6,24 +6,19 @@
   </div>
 
   <div class="cp-scroll">
-    <div class="cp-content">
-      <header class="cp-header">
-        <div>
-          <p id="cp-summary" class="cp-summary" aria-live="polite">Loading your To Do list…</p>
-        </div>
-        <div class="cp-header-end">
-          <span id="cp-last-scan" class="cp-last-scan"></span>
-          <a class="cp-analytics-button" href="/analytics" title="Analytics" aria-label="Open analytics">
-            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h16"/><path d="M7 16v-5"/><path d="M12 16V6"/><path d="M17 16v-8"/></svg>
-          </a>
-        </div>
-      </header>
+    <header class="cp-topbar">
+      <a class="icon-button cp-analytics-button" href="/analytics" title="Analytics" aria-label="Open analytics">
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h16"/><path d="M7 16v-5"/><path d="M12 16V6"/><path d="M17 16v-8"/></svg>
+      </a>
+    </header>
 
+    <div class="cp-content">
       <div class="cp-grid">
       <section class="cp-card cp-todo" aria-labelledby="cp-todo-title">
         <div class="cp-card-header">
           <h2 id="cp-todo-title" class="cp-card-title">To Do</h2>
           <span id="cp-todo-count" class="cp-count" hidden></span>
+          <span id="cp-last-scan" class="cp-last-scan"></span>
         </div>
         <p id="cp-todo-status" class="cp-status" role="status" hidden></p>
         <div class="cp-todo-scroll">

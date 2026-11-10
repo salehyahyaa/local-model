@@ -16,7 +16,6 @@ import { applySelectedModel, setupModelPicker } from "./models/modelPicker.js";
 import { setupImageDrop } from "./chat/attachment.js";
 import { setupAutostartMenu } from "./autostart/autostartMenu.js";
 import { setupSettingsPanel } from "./settings/settingsPanel.js";
-import { setupControlPanel } from "./controlpanel/controlPanel.js";
 
 chatStore.subscribe("chatsChanged", renderChatList);
 chatStore.subscribe("activeChatChanged", () => {
@@ -38,7 +37,7 @@ setupModelPicker();
 setupImageDrop();
 setupAutostartMenu();
 setupSettingsPanel();
-setupControlPanel();
+setupControlPanelLoader();
 
 let hasShownSaveError = false;
 chatStore.subscribe("saveFailed", (error) => {
@@ -55,4 +54,33 @@ if (settings) {
   watchCalls();
 } else {
   addMessageBubble("assistant", `Couldn't load saved chats (${error.message}). Changes won't be saved.`);
+}
+
+function loadStylesheet(href) {
+  return new Promise((resolve, reject) => {
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = href;
+    link.onload = resolve;
+    link.onerror = () => reject(new Error(`Couldn't load ${href}`));
+    document.head.append(link);
+  });
+}
+
+/** The Control Panel's code and styles load the first time it's opened, keeping them out of startup. */
+function setupControlPanelLoader() {
+  const button = document.getElementById("control-panel-button");
+  const start = async () => {
+    const [{ setupControlPanel, openControlPanel }] = await Promise.all([
+      import("./controlpanel/controlPanel.js"),
+      loadStylesheet("/assets/controlpanel/controlpanel.css"),
+    ]);
+    setupControlPanel();
+    return openControlPanel;
+  };
+  if (location.hash === "#control-panel") {
+    start();
+  } else {
+    button.addEventListener("click", async () => (await start())(), { once: true });
+  }
 }

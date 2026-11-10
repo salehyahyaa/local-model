@@ -24,12 +24,12 @@
 
 .sidebar.collapsed #sidebar-toggle-button { order: 1; margin-bottom: 8px; }
 .sidebar.collapsed #new-chat-button { order: 2; }
-.sidebar.collapsed #control-panel-button { order: 3; }
+.sidebar.collapsed #archive-button { order: 3; }
 .sidebar.collapsed #search-button { order: 4; }
 .sidebar.collapsed #settings-button { order: 5; }
-.sidebar.collapsed #archive-button { order: 6; }
+.sidebar.collapsed #control-panel-button { order: 6; }
 
-.archive-button { margin-top: auto; }
+.archive-button { margin-top: 4px; }
 .archive-button.active,
 .archive-button.active:hover,
 .sidebar.collapsed .archive-button.active {
@@ -106,7 +106,7 @@
 }
 
 .control-panel-button {
-  margin-top: 4px;
+  margin-top: auto;
   animation: control-panel-shift 7s ease-in-out infinite alternate;
 }
 

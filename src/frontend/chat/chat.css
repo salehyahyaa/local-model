@@ -105,12 +105,40 @@
   margin-right: 4px;
 }
 
-.message.pending::after {
+.message.pending:has(.message-text:not(:empty))::after {
   content: "●";
   animation: pulse 1s ease-in-out infinite;
 }
 
 @keyframes pulse { 50% { opacity: 0.3; } }
+
+/* Shown until the reply's first words arrive. */
+.working {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted-text);
+  font-size: 14.5px;
+}
+
+.message-text:not(:empty) ~ .working { display: none; }
+
+.working-bear { flex-shrink: 0; }
+
+/* The face glances around while the head stays still. */
+.working-bear-eyes { animation: bear-look 3.6s cubic-bezier(0.65, 0, 0.35, 1) infinite; }
+
+@keyframes bear-look {
+  0%, 14% { transform: translate(0, 0); }
+  22%, 38% { transform: translate(-2.2px, -0.6px); }
+  46%, 56% { transform: translate(0.4px, -1.6px); }
+  64%, 80% { transform: translate(2.2px, 0); }
+  88%, 100% { transform: translate(0, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .working-bear-eyes { animation: none; }
+}
 
 .message-form {
   position: relative;

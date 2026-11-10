@@ -14,7 +14,6 @@ const OPEN_ICON =
 const panel = document.getElementById("control-panel");
 const chatView = document.querySelector(".main");
 const openButton = document.getElementById("control-panel-button");
-const summary = document.getElementById("cp-summary");
 const lastScan = document.getElementById("cp-last-scan");
 const todoCount = document.getElementById("cp-todo-count");
 const todoStatus = document.getElementById("cp-todo-status");
@@ -159,11 +158,6 @@ function describeEmptyList(tasks) {
   return "You're all caught up.";
 }
 
-function renderSummary(tasks) {
-  const count = tasks.open.length;
-  summary.textContent = count === 0 ? "Nothing to do" : `${count} ${count === 1 ? "thing" : "things"} to do`;
-}
-
 function renderTasks(tasks) {
   showStatus(describeScanStatus(tasks));
   todoCount.hidden = tasks.open.length === 0;
@@ -179,7 +173,6 @@ function renderTasks(tasks) {
   completedList.replaceChildren(...tasks.completed.map(createClosedTask));
 
   lastScan.textContent = tasks.lastScanAt ? formatTimeAgo(tasks.lastScanAt) : "";
-  renderSummary(tasks);
 }
 
 function scheduleRefresh(isScanning) {
@@ -194,11 +187,14 @@ async function refreshTasks() {
   } catch (error) {
     if (!latestTasks) {
       showMessage(todoList, "Your To Do list couldn't load.", "cp-error");
-      summary.textContent = "Your To Do list couldn't load";
     }
     showStatus(error.message);
     scheduleRefresh(false);
   }
+}
+
+export function openControlPanel() {
+  openPanel();
 }
 
 function openPanel() {

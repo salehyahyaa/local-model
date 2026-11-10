@@ -14,6 +14,11 @@ from src.backend.chat import approvals, engine, model_slot, system_prompt
 from src.backend.chat.model_slot import ModelError
 from src.backend.chat_memory import activity, search
 from src.backend.integrations import service, toolbox
+from src.backend.integrations.prerequisites import (
+    Prerequisite,
+    Prerequisites,
+    missing_message,
+)
 from src.backend.integrations.toolbox import Toolbox
 from src.backend.main import app
 
@@ -127,6 +132,23 @@ def test_model_is_told_what_is_connected_without_any_secrets():
     ]
 
 
+def test_card_logos_name_the_service_but_never_its_address():
+    calendar = {
+        "id": 1,
+        "name": "Google Calendar",
+        "transport": "stdio",
+        "command": "python",
+        "args": service.GOOGLE_CALENDAR_SERVER_ARGS,
+        "env": {},
+        "enabled": True,
+    }
+    custom = {"id": 2, "name": "Notes", "transport": "http", "url": "https://x.example/key=secret", "args": [], "enabled": True}
+    logos = engine.integration_logos([calendar, custom], [{"name": "Weather"}])
+    assert logos["Google Calendar"] == {"name": "Google Calendar", "provider": "google-calendar"}
+    assert logos["Notes"] == {"name": "Notes"}
+    assert logos["Weather"] == {"name": "Weather"}
+
+
 def test_nothing_connected_adds_no_message():
     assert engine.connections_messages([], []) == []
 
@@ -142,6 +164,18 @@ def test_model_is_told_to_use_tools_only_when_asked(tools):
     assert model.seen_messages[0][0] == {"role": "system", "content": system_prompt.DEFAULT_SYSTEM_PROMPT}
     assert "current date and time" in model.seen_messages[0][1]["content"]
     assert model.seen_messages[0][2:] == USER_MESSAGE
+
+
+def test_telegram_chats_are_told_to_keep_replies_short(tools):
+    model = FakeModel([])
+    asyncio.run(collect(engine.run_chat(USER_MESSAGE, model, True, from_telegram=True)))
+    assert model.seen_messages[0][1] == {"role": "system", "content": system_prompt.TELEGRAM_PROMPT}
+
+
+def test_web_chats_are_not_told_to_keep_replies_short(tools):
+    model = FakeModel([])
+    run(model)
+    assert {"role": "system", "content": system_prompt.TELEGRAM_PROMPT} not in model.seen_messages[0]
 
 
 def use_saved_prompt(monkeypatch, saved):
@@ -213,10 +247,93 @@ def test_send_shows_exactly_what_will_go_out_and_runs_after_approval(tools):
     events = run(model, answer=True)
 
     assert events[0]["type"] == "approval"
-    assert events[0]["label"] == "Gmail → send_email"
-    assert events[0]["details"] == SEND_ARGUMENTS
+    assert events[0]["actions"] == [
+        {"label": "Gmail → send_email", "details": SEND_ARGUMENTS, "integration": {"name": "Gmail"}}
+    ]
     assert tools == [("send", SEND_ARGUMENTS)]
     assert events[1:] == [{"type": "tool", "label": "Gmail → send_email"}, {"type": "text", "text": "Sent"}]
+
+
+def test_several_changes_share_one_approval(tools):
+    second = {**tool_call("Gmail__send_email", {"to": "bo@example.com"}), "id": "second"}
+    model = FakeModel([tool_call("Gmail__send_email", SEND_ARGUMENTS), second], [{"type": "text", "text": "Sent"}])
+
+    events = run(model, answer=True)
+
+    approvals_shown = [event for event in events if event["type"] == "approval"]
+    assert len(approvals_shown) == 1
+    assert [action["details"] for action in approvals_shown[0]["actions"]] == [SEND_ARGUMENTS, {"to": "bo@example.com"}]
+    assert tools == [("send", SEND_ARGUMENTS), ("send", {"to": "bo@example.com"})]
+
+
+def test_one_deny_stops_every_change_on_the_card_but_not_reading(tools):
+    second = {**tool_call("Gmail__send_email", {"to": "bo@example.com"}), "id": "second"}
+    model = FakeModel([tool_call("Gmail__search_email"), tool_call("Gmail__send_email", SEND_ARGUMENTS), second], [])
+
+    run(model, answer=False)
+
+    assert tools == [("search", {})]
+    assert tool_results(model) == ["search done", engine.NOT_APPROVED, engine.NOT_APPROVED]
+
+
+def test_missing_prerequisites_skip_the_card_and_the_model_asks(monkeypatch):
+    box = Toolbox()
+    ran = []
+
+    async def create(arguments):
+        ran.append(arguments)
+        return "created"
+
+    needed = Prerequisites([Prerequisite("summary", "event title"), Prerequisite("start", "time", "time")])
+    box.add_tool("Google Calendar", "create_event", "Add", None, create, prerequisites=needed)
+
+    @asynccontextmanager
+    async def fake_open_toolbox(mcp_servers, api_integrations):
+        yield box
+
+    async def no_integrations():
+        return [], []
+
+    monkeypatch.setattr(engine, "open_toolbox", fake_open_toolbox)
+    monkeypatch.setattr(service, "load_enabled_integrations", no_integrations)
+    model = FakeModel([tool_call("Google_Calendar__create_event", {"summary": "go to dhur"})], [])
+
+    events = run(model, answer=True)
+
+    assert ran == []
+    assert [event for event in events if event["type"] == "approval"] == []
+    assert tool_results(model) == [missing_message(["time"])]
+    assert "event title, time" in box.definitions[0]["function"]["description"]
+
+
+def test_event_values_must_come_from_the_owner_not_the_model(monkeypatch):
+    box = Toolbox()
+    ran = []
+
+    async def create(arguments):
+        ran.append(arguments)
+        return "created"
+
+    needed = Prerequisites([Prerequisite("start", "time", "time", from_owner=True)])
+    box.add_tool("Google Calendar", "create_event", "Add", None, create, prerequisites=needed)
+
+    @asynccontextmanager
+    async def fake_open_toolbox(mcp_servers, api_integrations):
+        yield box
+
+    async def no_integrations():
+        return [], []
+
+    monkeypatch.setattr(engine, "open_toolbox", fake_open_toolbox)
+    monkeypatch.setattr(service, "load_enabled_integrations", no_integrations)
+    guessed = tool_call("Google_Calendar__create_event", {"start": "2026-11-11T09:00:00-06:00"})
+    model = FakeModel([guessed], [])
+
+    events = run(model, answer=True)
+
+    assert ran == []
+    assert [event for event in events if event["type"] == "approval"] == []
+    assert tool_results(model) == [missing_message(["time"])]
 
 
 def test_nothing_runs_while_waiting_for_approval(tools):

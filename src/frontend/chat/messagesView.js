@@ -39,9 +39,22 @@ function createCopyButton(bubble) {
   return button;
 }
 
-// Models mark bold text with ** (Markdown). Replies are shown as plain text, so the stars are dropped.
-function shownText(bubble, text) {
-  return bubble.classList.contains("assistant") ? text.replaceAll("**", "") : text;
+// Models mark bold text with ** (Markdown). In replies those parts are shown bold and the stars are hidden.
+// Text is only ever set as text, never as HTML, so a reply can't add anything else to the page.
+function showText(element, bubble, text) {
+  if (!bubble.classList.contains("assistant")) {
+    element.textContent = text;
+    return;
+  }
+  const parts = text.split("**");
+  // An odd number of ** leaves the last one unclosed (often mid-stream), so what follows it stays plain.
+  const closed = parts.length % 2 === 1 ? parts.length : parts.length - 1;
+  element.replaceChildren(...parts.map((part, index) => {
+    if (index % 2 === 0 || index >= closed) return document.createTextNode(part);
+    const bold = document.createElement("strong");
+    bold.textContent = part;
+    return bold;
+  }));
 }
 
 export function addMessageBubble(role, text) {
@@ -49,8 +62,8 @@ export function addMessageBubble(role, text) {
   bubble.className = `message ${role}`;
   const textElement = document.createElement("span");
   textElement.className = "message-text";
-  textElement.textContent = shownText(bubble, text);
   bubble.append(textElement, createCopyButton(bubble));
+  showText(textElement, bubble, text);
   messagesContainer.appendChild(bubble);
   scrollToBottom();
   return bubble;
@@ -58,7 +71,7 @@ export function addMessageBubble(role, text) {
 
 /** Changes a bubble's text while keeping its copy button, images and documents. */
 export function setBubbleText(bubble, text) {
-  bubble.querySelector(".message-text").textContent = shownText(bubble, text);
+  showText(bubble.querySelector(".message-text"), bubble, text);
 }
 
 export function addImageToBubble(bubble, imageUrl) {

@@ -751,8 +751,8 @@ def run_chat(monkeypatch, can_approve, answer=None):
 def test_chat_dials_only_after_the_owner_approves(phone, monkeypatch):
     events = run_chat(monkeypatch, can_approve=True, answer=True)
     approval = next(event for event in events if event["type"] == "approval")
-    assert approval["label"] == "Phone calls → place_appointment_call"
-    assert approval["details"]["phone_number"] == "+14155550123"
+    assert approval["actions"][0]["label"] == "Phone calls → place_appointment_call"
+    assert approval["actions"][0]["details"]["phone_number"] == "+14155550123"
     assert len(phone["dialed"]) == 1
 
 
@@ -772,7 +772,7 @@ def test_telegram_can_never_dial_because_it_cannot_approve(phone, monkeypatch):
 def test_chat_route_passes_on_the_conversation(monkeypatch):
     seen = {}
 
-    async def fake_run_chat(messages, model, can_approve, conversation_id):
+    async def fake_run_chat(messages, model, can_approve, conversation_id, from_telegram):
         seen["conversation_id"] = conversation_id
         yield {"type": "text", "text": "hi"}
 

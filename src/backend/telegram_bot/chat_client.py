@@ -23,7 +23,12 @@ class ChatClient:
 
     async def ask(self, messages, conversation_id=None, on_approval=None):
         """Without on_approval, the app refuses anything that needs the owner's approval."""
-        body = {"messages": messages, "conversationId": conversation_id, "canApprove": on_approval is not None}
+        body = {
+            "messages": messages,
+            "conversationId": conversation_id,
+            "canApprove": on_approval is not None,
+            "fromTelegram": True,
+        }
         try:
             async with self.client.stream("POST", "/api/chat", json=body) as response:
                 if response.is_error:

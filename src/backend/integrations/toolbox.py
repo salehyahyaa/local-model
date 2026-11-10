@@ -12,6 +12,7 @@ from src.backend.integrations.errors import McpError
 from src.backend.integrations.mcp_client import McpSession
 from src.backend.integrations.mcp_http_transport import McpHttpTransport
 from src.backend.integrations.mcp_stdio_transport import McpStdioTransport
+from src.backend.integrations.prerequisites import Prerequisites
 
 logger = logging.getLogger(__name__)
 
@@ -89,11 +90,23 @@ class Toolbox:
         tool = self.tools.get(tool_name)
         return tool is not None and tool["requiresApproval"]
 
+    def integration_for(self, tool_name):
+        tool = self.tools.get(tool_name)
+        return tool["integration"] if tool else None
+
     def label_for(self, tool_name):
         tool = self.tools.get(tool_name)
         return tool["label"] if tool else tool_name
 
-    def add_tool(self, integration_name, action_name, description, schema, handler, requires_approval=True):
+    def missing_info(self, tool_name, arguments, owner_text="", now=None):
+        """What the owner still has to give before this tool may run. Empty when it can go ahead."""
+        tool = self.tools.get(tool_name)
+        return tool["prerequisites"].missing(arguments, owner_text, now) if tool else []
+
+    def add_tool(
+        self, integration_name, action_name, description, schema, handler, requires_approval=True, prerequisites=None
+    ):
+        prerequisites = prerequisites or Prerequisites()
         tool_name = make_tool_name(integration_name, action_name)
         suffix = 2
         while tool_name in self.tools:
@@ -103,13 +116,19 @@ class Toolbox:
         self.definitions.append(
             {
                 "type": "function",
-                "function": {"name": tool_name, "description": description, "parameters": schema or EMPTY_SCHEMA},
+                "function": {
+                    "name": tool_name,
+                    "description": description + prerequisites.description(),
+                    "parameters": schema or EMPTY_SCHEMA,
+                },
             }
         )
         self.tools[tool_name] = {
             "label": f"{integration_name} → {action_name}",
+            "integration": integration_name,
             "handler": handler,
             "requiresApproval": requires_approval,
+            "prerequisites": prerequisites,
         }
 
     async def call(self, tool_name, arguments):
@@ -181,6 +200,7 @@ async def open_toolbox(mcp_servers, api_integrations):
                     make_mcp_handler(session, tool["name"]),
                     # Only tools that declare themselves read-only skip the owner's approval.
                     requires_approval=(tool.get("annotations") or {}).get("readOnlyHint") is not True,
+                    prerequisites=Prerequisites.from_tool(tool),
                 )
 
         for integration in api_integrations:

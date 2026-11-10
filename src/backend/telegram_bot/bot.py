@@ -4,6 +4,7 @@ Approve and Deny buttons are handled straight away, because the reply they belon
 """
 
 import asyncio
+import html
 import json
 import logging
 
@@ -29,6 +30,18 @@ DENY_PREFIX = "deny:"
 NO_LONGER_WAITING = "This request is no longer waiting."
 
 
+def reply_html(text):
+    """Models mark bold text with ** (Markdown). Those parts become bold and everything else is escaped,
+    so a reply can't format itself any other way. An unclosed ** leaves what follows it plain."""
+    parts = text.split("**")
+    closed = len(parts) if len(parts) % 2 == 1 else len(parts) - 1
+    return "".join(
+        f"<b>{html.escape(part, quote=False)}</b>" if index % 2 == 1 and index < closed
+        else html.escape(part, quote=False)
+        for index, part in enumerate(parts)
+    )
+
+
 def split_message(text, limit=MAX_MESSAGE_LENGTH):
     """Telegram can count an emoji as two characters, so each one counts as two here."""
     chunks = []
@@ -46,17 +59,23 @@ def split_message(text, limit=MAX_MESSAGE_LENGTH):
     return [chunk for chunk in chunks if chunk.strip()]
 
 
-def describe_approval(event):
-    """Shows exactly what would happen, as plain text, so the model's words can't change how the message looks."""
-    details = event.get("details") or {}
+def describe_action(action):
+    details = action.get("details") or {}
     lines = [
         f"{name}: {value if isinstance(value, str) else json.dumps(value, ensure_ascii=False)}"
         for name, value in details.items()
     ]
-    text = "\n".join(lines)
+    return "\n".join([action.get("label", "An action"), *lines])
+
+
+def describe_approval(event):
+    """Shows exactly what would happen, as plain text, so the model's words can't change how the message looks."""
+    actions = event.get("actions") or []
+    text = "\n\n".join(describe_action(action) for action in actions)
     if len(text) > MAX_APPROVAL_DETAILS:
         text = f"{text[:MAX_APPROVAL_DETAILS]}\n[The rest is cut off here]"
-    return f"Approve this?\n{event.get('label', 'An action')}\n\n{text}".strip()
+    question = "Approve this?" if len(actions) <= 1 else f"Approve these {len(actions)} changes?"
+    return f"{question}\n\n{text}".strip()
 
 
 def approval_buttons(approval_id):
@@ -261,7 +280,7 @@ class Bot:
         self.history = [*self.history, *answered][-MAX_HISTORY_MESSAGES:]
         if conversation_id is not None:
             await self.save(lambda log: log.save_reply(conversation_id, reply))
-        await self.send(chat_id, reply)
+        await self.send_reply(chat_id, reply)
 
     async def keep_typing(self, chat_id):
         """Telegram hides "typing…" after about five seconds, so it needs repeating during a long reply."""
@@ -275,6 +294,11 @@ class Bot:
     async def send(self, chat_id, text):
         for chunk in split_message(text):
             await self.send_chunk(chat_id, chunk)
+
+    async def send_reply(self, chat_id, reply):
+        """Split before formatting, so no message is cut off in the middle of a bold tag."""
+        for chunk in split_message(reply):
+            await self.retry_sending(lambda chunk=chunk: self.telegram.send_message(chat_id, reply_html(chunk), html=True))
 
     async def send_chunk(self, chat_id, chunk):
         await self.retry_sending(lambda: self.telegram.send_message(chat_id, chunk))

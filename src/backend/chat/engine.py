@@ -4,17 +4,22 @@ import json
 import logging
 from datetime import datetime
 
+from src.backend.appointment_calls import connection as appointment_call_connection
 from src.backend.appointment_calls import tool as appointment_call_tool
 from src.backend.chat import approvals, system_prompt
 from src.backend.chat.model_slot import ModelError
 from src.backend.chat_memory import activity, search
 from src.backend.integrations import service
+from src.backend.integrations.prerequisites import missing_message
 from src.backend.integrations.toolbox import is_error_result, open_toolbox, read_arguments
 
 logger = logging.getLogger(__name__)
 
 MAX_TOOL_ROUNDS = 8
-NOT_APPROVED = "The owner did not approve this, so it did not happen. Do not try again unless the owner asks."
+NOT_APPROVED = (
+    "The owner tapped Deny, so this did not happen. Tell the owner it was denied and not done, without saying it "
+    "still needs approval. Do not try again unless the owner asks."
+)
 OWNER_SENT_A_MESSAGE = (
     "This did not happen, because the owner sent a new message instead of approving. Follow that message. "
     "If this action is still wanted, request it again with any changes."
@@ -56,14 +61,31 @@ def connections_messages(mcp_servers, api_integrations):
     return [{"role": "system", "content": f"The owner's connected services: {', '.join(connections)}."}]
 
 
-async def run_chat(messages, model, can_approve, conversation_id=None):
+def integration_logos(mcp_servers, api_integrations):
+    """What the approval card needs to show each integration's logo. Never addresses or keys."""
+    logos = {appointment_call_connection.NAME: {"name": appointment_call_connection.NAME, "kind": "phone"}}
+    for server in mcp_servers:
+        public = service.public_mcp_server(server)
+        logos[public["name"]] = {
+            "name": public["name"],
+            **({"provider": public["provider"]} if "provider" in public else {}),
+        }
+    for integration in api_integrations:
+        logos[integration["name"]] = {"name": integration["name"]}
+    return logos
+
+
+async def run_chat(messages, model, can_approve, conversation_id=None, from_telegram=False):
     """Yields the events the chat page reads: text, tool, approval and error."""
     mcp_servers, api_integrations = await service.load_enabled_integrations()
     async with open_toolbox(mcp_servers, api_integrations) as toolbox:
         await appointment_call_tool.register(toolbox, conversation_id)
         search.register(toolbox)
+        logos = integration_logos(mcp_servers, api_integrations)
         prompt = await system_prompt.load_for_chat()
         owner_prompt = [{"role": "system", "content": prompt}] if prompt.strip() else []
+        if from_telegram:
+            owner_prompt.append({"role": "system", "content": system_prompt.TELEGRAM_PROMPT})
         conversation = [
             *owner_prompt,
             current_time_message(),
@@ -78,6 +100,10 @@ async def run_chat(messages, model, can_approve, conversation_id=None):
             if label == search.LABEL:
                 return
             await activity.record(conversation_id, label, arguments, outcome, result)
+
+        def owner_text():
+            # Only the owner's own messages, never tool results, so a value can't come from an email or the model.
+            return "\n".join(message["content"] for message in conversation if message["role"] == "user")
 
         for _ in range(MAX_TOOL_ROUNDS):
             text = ""
@@ -98,7 +124,35 @@ async def run_chat(messages, model, can_approve, conversation_id=None):
                 return
             conversation.append(assistant_message(text, calls))
 
-            follow_up = None
+            # A tool still missing information from the owner never runs or reaches the card; the model asks instead.
+            missing = {
+                call["id"]: toolbox.missing_info(
+                    call["name"], read_arguments(call["arguments"]), owner_text(), datetime.now().astimezone()
+                )
+                for call in calls
+            }
+            # Everything else in this step that needs approval goes on one card, so the owner answers once.
+            needing = [call for call in calls if toolbox.needs_approval(call["name"]) and not missing[call["id"]]]
+            answer = None
+            if needing and can_approve:
+                approval_id, decision = approvals.create()
+                yield {
+                    "type": "approval",
+                    "id": approval_id,
+                    "actions": [
+                        {
+                            "label": toolbox.label_for(call["name"]),
+                            "details": read_arguments(call["arguments"]),
+                            "integration": logos.get(
+                                toolbox.integration_for(call["name"]), {"name": toolbox.integration_for(call["name"])}
+                            ),
+                        }
+                        for call in needing
+                    ],
+                }
+                answer = await approvals.wait(approval_id, decision)
+
+            follow_up = answer.follow_up if answer is not None else None
             for call in calls:
                 # Every tool call needs a result before the owner's message can follow, but none may run now.
                 arguments = read_arguments(call["arguments"])
@@ -106,23 +160,15 @@ async def run_chat(messages, model, can_approve, conversation_id=None):
                     conversation.append(tool_message(call, OWNER_SENT_A_MESSAGE))
                     await remember(call, arguments, activity.CHANGED, None)
                     continue
-                if toolbox.needs_approval(call["name"]):
+                if missing[call["id"]]:
+                    result = missing_message(missing[call["id"]])
+                    conversation.append(tool_message(call, result))
+                    await remember(call, arguments, activity.FAILED, result)
+                    continue
+                if call in needing:
                     if not can_approve:
                         conversation.append(tool_message(call, CANNOT_APPROVE_HERE))
                         await remember(call, arguments, activity.DENIED, CANNOT_APPROVE_HERE)
-                        continue
-                    approval_id, decision = approvals.create()
-                    yield {
-                        "type": "approval",
-                        "id": approval_id,
-                        "label": toolbox.label_for(call["name"]),
-                        "details": arguments,
-                    }
-                    answer = await approvals.wait(approval_id, decision)
-                    if answer.follow_up is not None:
-                        follow_up = answer.follow_up
-                        conversation.append(tool_message(call, OWNER_SENT_A_MESSAGE))
-                        await remember(call, arguments, activity.CHANGED, None)
                         continue
                     if not answer.approved:
                         conversation.append(tool_message(call, NOT_APPROVED))

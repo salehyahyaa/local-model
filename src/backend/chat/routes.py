@@ -43,7 +43,8 @@ async def chat(request: Request):
     conversation_id = body.get("conversationId")
     if not isinstance(conversation_id, int) or isinstance(conversation_id, bool):
         conversation_id = None
-    events = engine.run_chat(messages, model, can_approve, conversation_id)
+    from_telegram = body.get("fromTelegram") is True
+    events = engine.run_chat(messages, model, can_approve, conversation_id, from_telegram)
     return StreamingResponse(to_lines(events), media_type="application/x-ndjson")
 
 

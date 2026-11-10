@@ -45,8 +45,10 @@ class TelegramApi:
             payload["offset"] = offset
         return await self.call("getUpdates", payload, timeout=timeout + POLL_EXTRA_TIMEOUT)
 
-    async def send_message(self, chat_id, text, reply_markup=None):
+    async def send_message(self, chat_id, text, reply_markup=None, html=False):
         payload = {"chat_id": chat_id, "text": text}
+        if html:
+            payload["parse_mode"] = "HTML"
         if reply_markup is not None:
             payload["reply_markup"] = reply_markup
         return await self.call("sendMessage", payload)

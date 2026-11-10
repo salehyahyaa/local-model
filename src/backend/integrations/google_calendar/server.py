@@ -43,6 +43,13 @@ TOOLS = [
     {
         "name": "create_event",
         "description": "Add an event to the owner's primary calendar. The owner approves it first.",
+        # The least the owner must say before an event is made. The chat checks these before showing the card.
+        "_meta": {
+            "prerequisites": [
+                {"field": "summary", "name": "event title", "from_owner": True},
+                {"field": "start", "name": "time", "needs": "time", "from_owner": True},
+            ]
+        },
         "inputSchema": {
             "type": "object",
             "properties": EVENT_PROPERTIES,
@@ -52,7 +59,8 @@ TOOLS = [
     {
         "name": "update_event",
         "description": (
-            "Change an event, such as moving its time. Send only what changes. The owner approves it first. "
+            "Change an event, such as moving or switching its time, day or place. Use this to move an event rather "
+            "than deleting it and creating a new one. Send only what changes. The owner approves it first. "
             "Guests aren't notified, so tell the owner if has_guests is true."
         ),
         "inputSchema": {

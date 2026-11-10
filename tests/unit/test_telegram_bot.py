@@ -16,6 +16,7 @@ from src.backend.telegram_bot.bot import (
     Bot,
     approval_buttons,
     describe_approval,
+    reply_html,
     split_message,
 )
 from src.backend.telegram_bot.chat_client import APP_NOT_RUNNING, APP_STOPPED_RESPONDING, ChatClient, ChatError
@@ -229,6 +230,16 @@ def test_long_reply_is_split_for_telegram():
     assert [len(chunk) for chunk in fake.sent] == [4096, 904]
 
 
+def test_reply_html_bolds_starred_text_and_escapes_the_rest():
+    assert reply_html("Moved **clean gun** to <b>1:20</b> & eagle") == (
+        "Moved <b>clean gun</b> to &lt;b&gt;1:20&lt;/b&gt; &amp; eagle"
+    )
+
+
+def test_reply_html_leaves_unclosed_stars_plain():
+    assert reply_html("a **b** c **d") == "a <b>b</b> c d"
+
+
 def test_split_counts_emoji_as_two_and_keeps_all_text():
     text = "😀" * 3000
     chunks = split_message(text)
@@ -273,8 +284,12 @@ def test_unexpected_error_does_not_stop_the_bot():
 APPROVAL = {
     "type": "approval",
     "id": "abc123",
-    "label": "Google Calendar → update_event",
-    "details": {"event_id": "e1", "start": "2026-11-10T14:00:00-06:00", "nested": {"a": 1}},
+    "actions": [
+        {
+            "label": "Google Calendar → update_event",
+            "details": {"event_id": "e1", "start": "2026-11-10T14:00:00-06:00", "nested": {"a": 1}},
+        }
+    ],
 }
 
 
@@ -300,6 +315,7 @@ def test_chat_can_ask_for_approval_and_saves_into_the_conversation():
     bot = make_saving_bot(handler, FakeConversations())
     asyncio.run(bot.handle_update(update()))
     assert seen["canApprove"] is True
+    assert seen["fromTelegram"] is True
     assert seen["conversationId"] == 5
 
 
@@ -325,8 +341,15 @@ def test_real_approval_ids_fit_in_a_telegram_button():
     assert len(longest.encode()) <= 64
 
 
+def test_several_changes_are_listed_on_one_message():
+    text = describe_approval(
+        {"actions": [{"label": "Move", "details": {"start": "1"}}, {"label": "Add", "details": {"summary": "x"}}]}
+    )
+    assert text == "Approve these 2 changes?\n\nMove\nstart: 1\n\nAdd\nsummary: x"
+
+
 def test_long_details_say_they_were_cut_off():
-    text = describe_approval({"label": "Send", "details": {"body": "a" * 9000}})
+    text = describe_approval({"actions": [{"label": "Send", "details": {"body": "a" * 9000}}]})
     assert len(text) < 4096
     assert "cut off" in text
 

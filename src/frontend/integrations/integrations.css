@@ -226,9 +226,48 @@
   border: 1px solid var(--border);
   border-radius: 12px;
   background: var(--composer);
+  position: relative;
 }
 
-.approval-title { font-weight: 600; }
+.approval-action {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.approval-action + .approval-action {
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.approval-action-title {
+  color: var(--muted-text);
+  font-size: 12px;
+}
+
+.approval-headline { font-weight: 600; }
+
+.approval-body {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.approval-logos:not(:empty) + .approval-action { padding-right: 64px; }
+
+.approval-logos {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  display: flex;
+  gap: 6px;
+}
+
+.approval-logos .integration-logo svg,
+.approval-logos .integration-logo img,
+.approval-logos .integration-logo-letter {
+  width: 20px;
+  height: 20px;
+}
 
 .approval-detail {
   display: flex;

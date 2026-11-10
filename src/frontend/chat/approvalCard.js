@@ -1,22 +1,35 @@
+import { createLogo } from "../integrations/logos.js";
 import { requestJson } from "../shared/httpClient.js";
 import { scrollToBottom } from "./messagesView.js";
 
 const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
 const DATE_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/;
 
-// Turns ISO dates and times from any tool into "Thu, Nov 12, 6:30 PM". Anything else is shown as sent.
+// The event's title or an email's subject leads the card in bold, and its description or body follows as plain
+// text. Neither needs a name beside it.
+const HEADLINE_FIELDS = ["summary", "title", "subject"];
+const BODY_FIELDS = ["description", "body"];
+
+// Date first and weekday last: "Nov 11, 2026, 10:00 AM, Wednesday".
+function readableDate(date, timeZone) {
+  const day = date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric", timeZone });
+  const weekday = date.toLocaleDateString(undefined, { weekday: "long", timeZone });
+  return { day, weekday };
+}
+
+// Turns ISO dates and times from any tool into readable text. Anything else is shown as sent.
 function readableValue(value) {
   if (typeof value !== "string") return JSON.stringify(value);
   const text = value.trim();
   if (DATE_ONLY.test(text)) {
-    return new Date(`${text}T00:00:00Z`).toLocaleDateString(undefined, {
-      weekday: "short", month: "short", day: "numeric", year: "numeric", timeZone: "UTC",
-    });
+    const { day, weekday } = readableDate(new Date(`${text}T00:00:00Z`), "UTC");
+    return `${day}, ${weekday}`;
   }
   if (DATE_TIME.test(text)) {
-    return new Date(text).toLocaleString(undefined, {
-      weekday: "short", month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit",
-    });
+    const date = new Date(text);
+    const { day, weekday } = readableDate(date);
+    const time = date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+    return `${day}, ${time}, ${weekday}`;
   }
   return value;
 }
@@ -25,10 +38,6 @@ function readableValue(value) {
 function readableName(name) {
   const words = name.replace(/_/g, " ");
   return words.charAt(0).toUpperCase() + words.slice(1);
-}
-
-function readableTitle(label) {
-  return label.replace(/\b[A-Za-z0-9]+(?:_[A-Za-z0-9]+)+\b/g, readableName);
 }
 
 function createDetailRow(name, value) {
@@ -88,35 +97,72 @@ export function addApprovalCard(approval, beforeElement) {
   const card = document.createElement("div");
   card.className = "approval-card";
 
-  const title = document.createElement("div");
-  title.className = "approval-title";
-  title.textContent = `Approve ${readableTitle(approval.label)}?`;
-  card.appendChild(title);
-  for (const [name, value] of Object.entries(approval.details)) {
-    card.appendChild(createDetailRow(name, value));
+  // Every change the model asked for in one step is on this one card, and one answer covers them all.
+  const actions = approval.actions;
+  for (const action of actions) {
+    const block = document.createElement("div");
+    block.className = "approval-action";
+    if (actions.length > 1) {
+      const heading = document.createElement("div");
+      heading.className = "approval-action-title";
+      heading.textContent = readableName(action.label.split(" → ").pop());
+      block.appendChild(heading);
+    }
+    const details = Object.entries(action.details);
+    const headline = details.find(([name]) => HEADLINE_FIELDS.includes(name));
+    if (headline) {
+      const title = document.createElement("div");
+      title.className = "approval-headline";
+      title.textContent = readableValue(headline[1]);
+      block.appendChild(title);
+    }
+    for (const [name, value] of details) {
+      if (headline && name === headline[0]) continue;
+      if (!BODY_FIELDS.includes(name)) block.appendChild(createDetailRow(name, value));
+    }
+    for (const [name, value] of details) {
+      // A description that only repeats the title says nothing new.
+      if (!BODY_FIELDS.includes(name) || (headline && String(value).trim() === String(headline[1]).trim())) continue;
+      const body = document.createElement("div");
+      body.className = "approval-body";
+      body.textContent = readableValue(value);
+      block.appendChild(body);
+    }
+    card.appendChild(block);
   }
 
-  const actions = document.createElement("div");
-  actions.className = "approval-actions";
+  // The logo of each integration these changes go to, once each, at the top right.
+  const logos = document.createElement("div");
+  logos.className = "approval-logos";
+  const seen = new Set();
+  for (const { integration } of actions) {
+    if (!integration?.name || seen.has(integration.name)) continue;
+    seen.add(integration.name);
+    logos.appendChild(createLogo(integration));
+  }
+  card.prepend(logos);
+
+  const buttons = document.createElement("div");
+  buttons.className = "approval-actions";
 
   async function answer(approved) {
     setWaitingCard(null);
-    actions.replaceChildren();
-    actions.textContent = approved ? "Approved" : "Denied";
+    buttons.replaceChildren();
+    buttons.textContent = approved ? "Approved" : "Denied";
     try {
       await requestJson("POST", `/api/chat/approvals/${encodeURIComponent(approval.id)}`, { approved });
     } catch (error) {
-      actions.textContent = error.message;
+      buttons.textContent = error.message;
     }
   }
 
-  actions.append(
+  buttons.append(
     createButton("Deny", "secondary-button", () => answer(false)),
     createButton("Approve", "save-button", () => answer(true)),
   );
-  card.appendChild(actions);
+  card.appendChild(buttons);
 
   beforeElement.parentNode.insertBefore(card, beforeElement);
-  setWaitingCard({ approval, actions });
+  setWaitingCard({ approval, actions: buttons });
   scrollToBottom();
 }

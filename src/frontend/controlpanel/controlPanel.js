@@ -1,3 +1,4 @@
+import { refreshAlarms, setupAlarms, stopAlarms } from "./alarmsView.js";
 import * as api from "./controlPanelApi.js";
 
 const REFRESH_MS = 60000;
@@ -208,10 +209,12 @@ function openPanel() {
   history.replaceState(null, "", PAGE_ADDRESS);
   if (!latestTasks) showSkeleton(todoList, 4);
   refreshTasks();
+  refreshAlarms();
 }
 
 function closePanel() {
   clearTimeout(refreshTimer);
+  stopAlarms();
   panel.hidden = true;
   chatView.hidden = false;
   openButton.classList.remove("active");
@@ -220,6 +223,7 @@ function closePanel() {
 }
 
 export function setupControlPanel() {
+  setupAlarms();
   openButton.setAttribute("aria-pressed", "false");
   openButton.addEventListener("click", () => (panel.hidden ? openPanel() : closePanel()));
   document.getElementById("sidebar").addEventListener("click", (event) => {

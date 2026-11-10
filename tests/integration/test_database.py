@@ -7,8 +7,9 @@ from fastapi.testclient import TestClient
 
 from src.backend import config, db, store
 from src.backend.models.image_generation import store as image_store
-from src.backend.integrations import api_store, mcp_store, service
+from src.backend.integrations import api_store, mcp_store, service, toolbox
 from src.backend.integrations.errors import DuplicateNameError
+from src.backend.secret_store import get_secret
 
 
 @pytest.fixture
@@ -124,6 +125,11 @@ def test_api_integration_store(test_database_url, monkeypatch):
 
 
 def test_service_keeps_keys_out_of_the_database(test_database_url, monkeypatch, env_file):
+    async def accept_connection(server):
+        return None
+
+    monkeypatch.setattr(toolbox, "check_connection", accept_connection)
+
     async def scenario():
         await service.add_mcp_server(
             {"name": "GitHub", "transport": "http", "url": "https://mcp.example.com", "apiKey": "ghp_secret",
@@ -162,7 +168,8 @@ def test_integration_api_end_to_end(test_database_url, monkeypatch, env_file):
         )
         assert response.status_code == 201
         integration_id = response.json()["id"]
-        assert dotenv_values(env_file) == {"INTEGRATION_WEATHER_API_KEY": "w-key"}
+        assert get_secret("INTEGRATION_WEATHER_API_KEY") == "w-key"
+        assert dotenv_values(env_file) == {}
 
         assert client.post("/api/integrations/api", json={
             "name": "Weather", "description": "Again", "method": "GET", "url": "https://w.example.com"
@@ -174,4 +181,4 @@ def test_integration_api_end_to_end(test_database_url, monkeypatch, env_file):
 
         assert client.delete(f"/api/integrations/api/{integration_id}").status_code == 200
         assert client.get("/api/integrations").json() == {"mcpServers": [], "apiIntegrations": []}
-        assert dotenv_values(env_file) == {}
+        assert get_secret("INTEGRATION_WEATHER_API_KEY") == ""

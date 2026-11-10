@@ -46,7 +46,7 @@
 }
 
 .cp-content {
-  max-width: 760px;
+  max-width: 1080px;
   margin: 0 auto;
   padding: 40px 32px 56px;
 }
@@ -60,16 +60,8 @@
   animation: cp-rise 0.4s ease-out both;
 }
 
-.cp-title {
-  margin: 0;
-  font-size: 30px;
-  font-weight: 650;
-  line-height: 1.15;
-  letter-spacing: -0.02em;
-}
-
 .cp-summary {
-  margin: 6px 0 0;
+  margin: 0;
   font-size: 15px;
   color: var(--cp-secondary-text);
 }
@@ -109,6 +101,59 @@
   font-size: 13.5px;
   font-weight: 600;
   color: var(--cp-secondary-text);
+}
+
+.cp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  align-items: start;
+  gap: 18px;
+}
+
+.cp-todo,
+.cp-alarms {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - 200px);
+  min-height: 240px;
+}
+
+.cp-alarms .cp-card-title {
+  font-size: 18px;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+.cp-header-action { margin-left: auto; }
+.cp-count-alarm { background: #dc2626; }
+
+.cp-alarm-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--cp-chip-red);
+  color: var(--cp-chip-red-text);
+}
+
+.cp-card-footer {
+  margin: 10px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--glass-border);
+  font-size: 12px;
+  color: var(--cp-secondary-text);
+}
+
+.cp-todo-scroll {
+  flex: 1;
+  min-height: 0;
+  margin: 0 -10px;
+  padding: 0 10px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .cp-todo .cp-card-title {
@@ -298,7 +343,6 @@
 
 @container (max-width: 520px) {
   .cp-content { padding: 20px 12px 40px; }
-  .cp-title { font-size: 24px; }
   .cp-header { flex-direction: column; align-items: flex-start; gap: 12px; }
   .cp-card { padding: 14px; }
   .cp-task { flex-wrap: wrap; align-items: flex-start; gap: 6px 10px; }
@@ -312,3 +356,26 @@
   .cp-card,
   .cp-skeleton { animation: none; }
 }
+
+.cp-header-end {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.cp-analytics-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  background: var(--glass-fill);
+  color: var(--cp-secondary-text);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+
+.cp-analytics-button:hover { background: var(--glass-fill-hover); color: var(--text); }
+.cp-analytics-button:focus-visible { outline: 2px solid var(--cp-accent); outline-offset: 2px; }

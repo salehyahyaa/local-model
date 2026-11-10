@@ -5,6 +5,7 @@
 - Change, view, update email // Gmail
 - Model calls #'s to make reservations, appointments, etc // ElevenLabs, Twilio, Open Weight model
 - DoorDash food // DoorDash API
+- Github // for now just this repo till switch from frontier to open weight models
 - etc still building
 
 # Image Generation Model: ...

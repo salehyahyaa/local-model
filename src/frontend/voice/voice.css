@@ -1,7 +1,11 @@
 .voice-orb {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  left: 50%;
+  translate: -50% 0;
+  z-index: 5;
   display: flex;
-  justify-content: center;
-  padding: 8px 0 14px;
+  pointer-events: none;
   perspective: 600px;
 }
 

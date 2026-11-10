@@ -44,6 +44,6 @@ def test_integrations_endpoint(running_app):
     response = httpx.get(f"{running_app}/api/integrations")
     if TEST_DATABASE_URL:
         assert response.status_code == 200
-        assert response.json() == {"mcpServers": [], "apiIntegrations": []}
+        assert response.json() == {"mcpServers": [], "apiIntegrations": [], "phoneCalls": []}
     else:
         assert response.status_code == 503

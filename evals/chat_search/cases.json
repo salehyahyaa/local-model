@@ -1,0 +1,189 @@
+{
+  "about": "Made-up chats and questions with known answers for scripts/eval_search.py. Nothing here is real, so it is safe to commit.",
+  "chats": [
+    {
+      "title": "Job hunt",
+      "messages": [
+        {"key": "job-call", "role": "user", "date": "2026-03-03T15:00:00Z", "text": "Had a quick phone call with the recruiter from Northwind Labs, they want a second round with the engineering manager next Thursday."},
+        {"key": "job-call-reply", "role": "assistant", "date": "2026-03-03T15:01:00Z", "text": "Nice, want me to block time to prepare before the second round?"}
+      ],
+      "actions": [
+        {"key": "prep-event", "date": "2026-03-03T15:02:00Z", "label": "Google Calendar → create_event", "arguments": {"summary": "Prep for Northwind second round", "start": "2026-03-11T17:00"}, "outcome": "done", "result": "{\"status\": \"confirmed\"}"}
+      ]
+    },
+    {
+      "title": "Apartment",
+      "messages": [
+        {"key": "lease", "role": "user", "date": "2026-02-14T18:00:00Z", "text": "The landlord at 48 Harbor Street sent the renewal, rent goes up to $2,350 starting May."},
+        {"key": "lease-advice", "role": "assistant", "date": "2026-02-14T18:01:00Z", "text": "That is about a 6% increase. You could ask for a two-year term at the current rate."}
+      ]
+    },
+    {
+      "title": "Health",
+      "messages": [
+        {"key": "dentist", "role": "user", "date": "2026-04-20T13:00:00Z", "text": "Booked a cleaning with Dr. Alvarez for May 6 at 9am, remind me the day before."},
+        {"key": "knee", "role": "user", "date": "2026-06-02T20:00:00Z", "text": "My knee has been sore after running, the physio said to cut my mileage for two weeks."}
+      ],
+      "actions": [
+        {"key": "dentist-reminder", "date": "2026-04-20T13:01:00Z", "label": "Reminders → create_reminder", "arguments": {"text": "Cleaning with Dr. Alvarez tomorrow 9am", "when": "2026-05-05T18:00"}, "outcome": "done", "result": "Reminder saved"}
+      ]
+    },
+    {
+      "title": "Car",
+      "messages": [
+        {"key": "car-service", "role": "user", "date": "2026-01-10T16:00:00Z", "text": "The Corolla needs new brake pads, the shop quoted $420."},
+        {"key": "tires", "role": "user", "date": "2026-07-15T16:00:00Z", "text": "Swapped to all-season tires at Midtown Auto."}
+      ],
+      "actions": [
+        {"key": "call-shop", "date": "2026-07-14T16:00:00Z", "label": "Phone calls → place_call", "arguments": {"to": "Midtown Auto", "purpose": "Book a tire swap"}, "outcome": "failed", "result": "No answer"}
+      ]
+    },
+    {
+      "title": "Travel",
+      "messages": [
+        {"key": "lisbon", "role": "user", "date": "2026-05-22T19:00:00Z", "text": "Thinking of a long weekend in Lisbon in September, flights from Boston are around $640."},
+        {"key": "passport", "role": "user", "date": "2026-05-23T10:00:00Z", "text": "My passport expires in November, do I need to renew it before I go?"},
+        {"key": "passport-answer", "role": "assistant", "date": "2026-05-23T10:01:00Z", "text": "Portugal asks for at least three months of validity after you leave, so renew it first."}
+      ],
+      "actions": [
+        {"key": "trip-email", "date": "2026-05-22T19:05:00Z", "label": "Gmail → send_email", "arguments": {"to": "maya@example.com", "subject": "Lisbon in September?", "body": "Want to split an Airbnb in Lisbon Sept 18-21?"}, "outcome": "done", "result": "Sent"}
+      ]
+    },
+    {
+      "title": "Money",
+      "messages": [
+        {"key": "budget", "role": "user", "date": "2026-02-01T12:00:00Z", "text": "Monthly budget: groceries 450, dining out 200, subscriptions 60."},
+        {"key": "tax", "role": "user", "date": "2026-04-10T21:00:00Z", "text": "Filed my taxes today, the refund should be about 1,180 dollars."}
+      ]
+    },
+    {
+      "title": "Family",
+      "messages": [
+        {"key": "mom-bday", "role": "user", "date": "2026-03-25T17:00:00Z", "text": "Mom's birthday is April 12, she said she'd love a pottery class."},
+        {"key": "sister", "role": "user", "date": "2026-08-08T14:00:00Z", "text": "My sister Lena is moving to Denver next month, I offered to help her pack."}
+      ],
+      "actions": [
+        {"key": "bday-dinner", "date": "2026-03-25T17:02:00Z", "label": "Google Calendar → create_event", "arguments": {"summary": "Mom's birthday dinner", "start": "2026-04-12T19:00"}, "outcome": "denied"}
+      ]
+    },
+    {
+      "title": "Work",
+      "messages": [
+        {"key": "perf-review", "role": "user", "date": "2026-06-18T22:00:00Z", "text": "My manager said my performance review is on the 30th and I should write a self-assessment."},
+        {"key": "perf-advice", "role": "assistant", "date": "2026-06-18T22:01:00Z", "text": "Start with three projects where you can show measurable impact."},
+        {"key": "outage", "role": "user", "date": "2026-09-02T19:00:00Z", "text": "Production went down for 40 minutes because a database migration locked the orders table."}
+      ],
+      "actions": [
+        {"key": "slack-post", "date": "2026-09-02T19:10:00Z", "label": "Slack → post_message", "arguments": {"channel": "#incidents", "text": "Postmortem for the orders table lock at 3pm"}, "outcome": "done", "result": "Posted"}
+      ]
+    },
+    {
+      "title": "Biscuit",
+      "messages": [
+        {"key": "vet", "role": "user", "date": "2026-07-01T15:00:00Z", "text": "Took Biscuit to the vet, he needs his rabies booster in August."},
+        {"key": "dog-food", "role": "user", "date": "2026-07-02T15:00:00Z", "text": "Switching Biscuit to a salmon-based kibble because of his itchy skin."}
+      ]
+    },
+    {
+      "title": "Kitchen",
+      "messages": [
+        {"key": "recipe", "role": "user", "date": "2026-01-28T23:00:00Z", "text": "Made a lentil soup with cumin and smoked paprika, froze half for next week."},
+        {"key": "allergy", "role": "user", "date": "2026-03-09T18:00:00Z", "text": "Please remember my partner is allergic to cashews."}
+      ]
+    },
+    {
+      "title": "Hobbies",
+      "messages": [
+        {"key": "spanish", "role": "user", "date": "2026-02-20T01:00:00Z", "text": "Started Spanish lessons on Tuesdays with a tutor named Sofia."},
+        {"key": "guitar", "role": "user", "date": "2026-08-25T20:00:00Z", "text": "Bought a used acoustic guitar for $180 and I'm learning chords."}
+      ]
+    },
+    {
+      "title": "Home",
+      "messages": [
+        {"key": "leak", "role": "user", "date": "2026-10-03T14:00:00Z", "text": "Water is dripping under the kitchen sink, the plumber comes Friday."},
+        {"key": "wifi", "role": "user", "date": "2026-10-05T01:00:00Z", "text": "The internet keeps dropping every evening, the router is the Netgear one from 2019."}
+      ],
+      "actions": [
+        {"key": "plumber-event", "date": "2026-10-03T14:02:00Z", "label": "Google Calendar → create_event", "arguments": {"summary": "Plumber visit", "start": "2026-10-09T10:00"}, "outcome": "done", "result": "{\"status\": \"confirmed\"}"}
+      ]
+    },
+    {
+      "title": "Fitness",
+      "messages": [
+        {"key": "half-marathon", "role": "user", "date": "2026-04-01T11:00:00Z", "text": "Signed up for the Hartford half marathon in October."},
+        {"key": "gym", "role": "user", "date": "2026-09-12T12:00:00Z", "text": "Cancelled my gym membership, I'll run outside instead."}
+      ]
+    },
+    {
+      "title": "Chit chat",
+      "messages": [
+        {"key": "weather", "role": "user", "date": "2026-05-01T16:00:00Z", "text": "Lovely sunny day today."},
+        {"key": "documentary", "role": "user", "date": "2026-05-02T02:00:00Z", "text": "Watched a documentary about deep sea creatures last night."}
+      ]
+    }
+  ],
+  "questions": [
+    {"type": "same_meaning", "query": "job interview", "expect": ["job-call"]},
+    {"type": "same_meaning", "query": "when is my next round with the hiring company", "expect": ["job-call"]},
+    {"type": "same_meaning", "query": "how much more will my housing cost", "expect": ["lease", "lease-advice"]},
+    {"type": "same_meaning", "query": "teeth appointment", "expect": ["dentist", "dentist-reminder"]},
+    {"type": "same_meaning", "query": "injury from jogging", "expect": ["knee"]},
+    {"type": "same_meaning", "query": "vehicle repair price", "expect": ["car-service"]},
+    {"type": "same_meaning", "query": "vacation plans abroad", "expect": ["lisbon", "trip-email"]},
+    {"type": "same_meaning", "query": "travel document running out", "expect": ["passport", "passport-answer"]},
+    {"type": "same_meaning", "query": "money back from the government", "expect": ["tax"]},
+    {"type": "same_meaning", "query": "present idea for my mother", "expect": ["mom-bday"]},
+    {"type": "same_meaning", "query": "relative relocating to another city", "expect": ["sister"]},
+    {"type": "same_meaning", "query": "yearly evaluation with my boss", "expect": ["perf-review", "perf-advice"]},
+    {"type": "same_meaning", "query": "website outage", "expect": ["outage", "slack-post"]},
+    {"type": "same_meaning", "query": "dog vaccination", "expect": ["vet"]},
+    {"type": "same_meaning", "query": "changing the pet's diet", "expect": ["dog-food"]},
+    {"type": "same_meaning", "query": "what soup did I cook", "expect": ["recipe"]},
+    {"type": "same_meaning", "query": "foods my partner can't eat", "expect": ["allergy"]},
+    {"type": "same_meaning", "query": "language classes", "expect": ["spanish"]},
+    {"type": "same_meaning", "query": "musical instrument purchase", "expect": ["guitar"]},
+    {"type": "same_meaning", "query": "plumbing problem", "expect": ["leak", "plumber-event"]},
+    {"type": "same_meaning", "query": "network keeps disconnecting", "expect": ["wifi"]},
+    {"type": "same_meaning", "query": "running race I registered for", "expect": ["half-marathon"]},
+    {"type": "same_meaning", "query": "quit the fitness club", "expect": ["gym"]},
+
+    {"type": "exact", "query": "Northwind", "expect": ["job-call", "prep-event"]},
+    {"type": "exact", "query": "48 Harbor Street", "expect": ["lease"]},
+    {"type": "exact", "query": "Dr. Alvarez", "expect": ["dentist", "dentist-reminder"]},
+    {"type": "exact", "query": "Corolla", "expect": ["car-service"]},
+    {"type": "exact", "query": "Midtown Auto", "expect": ["tires", "call-shop"]},
+    {"type": "exact", "query": "Lisbon", "expect": ["lisbon", "trip-email"]},
+    {"type": "exact", "query": "Biscuit", "expect": ["vet", "dog-food"]},
+    {"type": "exact", "query": "Sofia", "expect": ["spanish"]},
+    {"type": "exact", "query": "Netgear", "expect": ["wifi"]},
+    {"type": "exact", "query": "Hartford", "expect": ["half-marathon"]},
+    {"type": "exact", "query": "2,350", "expect": ["lease"]},
+    {"type": "exact", "query": "cashews", "expect": ["allergy"]},
+
+    {"type": "dates", "query": "appointment", "after": "2026-04-01", "before": "2026-06-01", "expect": ["dentist", "dentist-reminder"]},
+    {"type": "dates", "query": "car", "before": "2026-02-01", "expect": ["car-service"]},
+    {"type": "dates", "query": "car", "after": "2026-07-01", "expect": ["tires", "call-shop"]},
+    {"type": "dates", "query": "trip", "after": "2026-05-01", "before": "2026-06-01", "expect": ["lisbon", "trip-email", "passport"]},
+    {"type": "dates", "query": "health", "after": "2026-06-01", "before": "2026-07-01", "expect": ["knee"]},
+    {"type": "dates", "query": "work", "after": "2026-09-01", "before": "2026-10-01", "expect": ["outage", "slack-post"]},
+
+    {"type": "actions", "query": "did you add the Northwind prep to my calendar", "expect": ["prep-event"]},
+    {"type": "actions", "query": "did I email anyone about the trip", "expect": ["trip-email"]},
+    {"type": "actions", "query": "did you schedule the plumber", "expect": ["plumber-event"]},
+    {"type": "actions", "query": "the reminder you set for the dentist", "expect": ["dentist-reminder"]},
+    {"type": "actions", "query": "did I post in the incidents channel", "expect": ["slack-post"]},
+    {"type": "actions", "query": "did the birthday dinner get added", "expect": ["bday-dinner"]},
+    {"type": "actions", "query": "did you call the car shop", "expect": ["call-shop"]},
+
+    {"type": "nothing", "query": "my wedding anniversary", "expect": []},
+    {"type": "nothing", "query": "stock portfolio performance", "expect": []},
+    {"type": "nothing", "query": "kayaking in Norway", "expect": []},
+    {"type": "nothing", "query": "grandfather's surgery", "expect": []},
+    {"type": "nothing", "query": "solar panel installation", "expect": []},
+    {"type": "nothing", "query": "chess tournament results", "expect": []},
+    {"type": "nothing", "query": "electric bill", "expect": []},
+    {"type": "nothing", "query": "baby shower plans", "expect": []},
+    {"type": "nothing", "query": "crypto wallet", "expect": []}
+  ]
+}

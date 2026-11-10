@@ -113,6 +113,7 @@
 @keyframes pulse { 50% { opacity: 0.3; } }
 
 .message-form {
+  position: relative;
   padding: 0 24px 20px;
 }
 

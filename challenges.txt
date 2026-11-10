@@ -1,3 +1,17 @@
+#add these followings for future 
+
+What to actually do (high impact, realistic):
+Fine-tune / train something (even small)
+Fine-tune a small open-weight model (or LoRA) on your domain tasks or tool-use data.
+Or train a custom embedding / reranker for the RAG pipeline.
+Show before/after numbers.
+
+Proper evaluation suite (this matters more than the 90% claim)
+Retrieval metrics: Recall@k, nDCG, MRR on a held-out set.
+End-to-end agent success rate (task completion %, tool-use accuracy, failure modes).
+Latency, memory, and throughput on the actual Jetson hardware.
+Ablation studies (with vs without fine-tuning, different chunking, different models).
+----
 Malware protection for uploads: how it works and what it helps with
 ====================================================================
 
@@ -80,3 +94,11 @@ Now, we will get into the more advnaced stuff and things.
   We also save actions to the DB to in the future recall X action using a search tool to word index the db (using words from ur request)to find the best matching results
 
   We then use RAG for vectorized embeddings to lookup same || similar information to be able to refernce to anything no matter the size
+  
+  - For the RAG implementation we will take a hybrid apporach(dense, sparse) using bge-small as an open weight RAG model to keep the data to oursvles
+    We take a hybrid apporach to search for exact dates and to find the meaning of the words we are searching for 
+    RAG turns searches into decimal float value represeations of the word and then use that as an embedding into the DB to search for the closet match
+    
+    for evaulations we will test the model on untested data so it deosnt know the answer and so peronsal infomation isnt leaked.
+    The model will be tested on tests where the answer is known to understand the models performace of the evulation.
+    To ship the model must score above a passing metric to be apporved | Analytical dashboard will have to be made to see evualtions/metrics/scores/make future decsions

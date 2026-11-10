@@ -210,3 +210,36 @@ CREATE TABLE tool_activity (
 
 CREATE INDEX tool_activity_conversation_id_idx ON tool_activity (conversation_id, id);
 CREATE INDEX tool_activity_search_text_idx ON tool_activity USING GIN (search_text);
+
+-- Health alarms: one row each time a check starts failing, closed when it works again.
+CREATE TABLE alarms (
+    id           BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    user_id      BIGINT NOT NULL REFERENCES users (user_id) ON DELETE CASCADE,
+    check_key    TEXT NOT NULL,  -- e.g. "database", "job:task_scan", "integration:mcp:3"
+    name         TEXT NOT NULL,  -- what failed, as the owner sees it
+    problem      TEXT NOT NULL,
+    started_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    resolved_at  TIMESTAMPTZ
+);
+
+CREATE UNIQUE INDEX alarms_one_active_per_check_idx ON alarms (user_id, check_key) WHERE resolved_at IS NULL;
+CREATE INDEX alarms_user_id_started_at_idx ON alarms (user_id, started_at DESC);
+
+-- Meaning-based search: messages and tool actions as numbers from the local bge-small model.
+CREATE EXTENSION IF NOT EXISTS vector;
+
+CREATE TABLE search_embeddings (
+    id                BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    message_id        BIGINT REFERENCES messages (id) ON DELETE CASCADE,
+    tool_activity_id  BIGINT REFERENCES tool_activity (id) ON DELETE CASCADE,
+    chunk             INTEGER NOT NULL DEFAULT 0,  -- which part of a long text
+    model             TEXT NOT NULL,  -- a different model means the text is processed again
+    embedding         vector(384) NOT NULL,
+    created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CHECK ((message_id IS NULL) <> (tool_activity_id IS NULL))
+);
+
+CREATE UNIQUE INDEX search_embeddings_message_idx ON search_embeddings (message_id, model, chunk)
+    WHERE message_id IS NOT NULL;
+CREATE UNIQUE INDEX search_embeddings_tool_activity_idx ON search_embeddings (tool_activity_id, model, chunk)
+    WHERE tool_activity_id IS NOT NULL;

@@ -9,13 +9,18 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from src.backend import db
+from src.backend.analytics.routes import router as analytics_router
 from src.backend.appointment_calls import poller as appointment_call_poller
 from src.backend.appointment_calls.routes import router as appointment_calls_router
 from src.backend.attachments import documents
 from src.backend.attachments.routes import router as attachments_router
 from src.backend.autostart.routes import router as autostart_router
+from src.backend.chat_memory import embeddings as search_embeddings
 from src.backend.chat.routes import router as chat_router
 from src.backend.config import FRONTEND_DIR
+from src.backend.health import jobs as health_jobs
+from src.backend.health import monitor as health_monitor
+from src.backend.health.routes import router as health_router
 from src.backend.integration_routes import router as integration_router
 from src.backend.logging_config import setup_logging
 from src.backend.models.image_generation.routes import ExposeConnectionEvents
@@ -45,7 +50,19 @@ async def lifespan(app):
             logging.getLogger(__name__).exception("Could not clean up orphaned document files")
     call_results = asyncio.create_task(appointment_call_poller.run()) if db.pool is not None else None
     task_scans = asyncio.create_task(task_poller.run()) if db.pool is not None else None
+    if call_results is not None:
+        health_jobs.watch("call_results", call_results)
+    if task_scans is not None:
+        health_jobs.watch("task_scan", task_scans)
+    # Only starts the embedding model when there are new messages to embed.
+    embedding_updates = asyncio.create_task(search_embeddings.run()) if db.pool is not None else None
+    if embedding_updates is not None:
+        health_jobs.watch(search_embeddings.JOB, embedding_updates)
+    health_checks = asyncio.create_task(health_monitor.run())
     yield
+    health_checks.cancel()
+    if embedding_updates is not None:
+        embedding_updates.cancel()
     if call_results is not None:
         call_results.cancel()
     if task_scans is not None:
@@ -72,8 +89,10 @@ app.include_router(attachments_router)
 app.include_router(autostart_router)
 app.include_router(appointment_calls_router)
 app.include_router(task_tracker_router)
+app.include_router(health_router)
 app.include_router(integration_router)
 app.include_router(image_generation_router)
+app.include_router(analytics_router)
 
 
 @app.exception_handler(db.DatabaseUnavailableError)

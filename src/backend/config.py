@@ -46,5 +46,12 @@ ELEVENLABS_API_URL = os.getenv("ELEVENLABS_API_URL", "https://api.elevenlabs.io"
 ELEVENLABS_TIMEOUT = float(os.getenv("ELEVENLABS_TIMEOUT", "10"))
 APPOINTMENT_CALL_RESULT_TIMEOUT = float(os.getenv("APPOINTMENT_CALL_RESULT_TIMEOUT", "1800"))
 APPOINTMENT_CALL_POLL_SECONDS = float(os.getenv("APPOINTMENT_CALL_POLL_SECONDS", "15"))
+
+# Meaning-based search: where the local embedding model is kept, and how often new messages are embedded.
+EMBEDDING_CACHE_DIR = ROOT_DIR / "data" / "models" / "embeddings"
+EMBEDDING_POLL_SECONDS = float(os.getenv("EMBEDDING_POLL_SECONDS", "60"))
 TASK_SCAN_SECONDS = float(os.getenv("TASK_SCAN_SECONDS", "300"))
 TASK_MODEL_EMAILS_PER_SCAN = int(os.getenv("TASK_MODEL_EMAILS_PER_SCAN", "100"))
+HEALTH_CHECK_SECONDS = float(os.getenv("HEALTH_CHECK_SECONDS", "60"))
+INTEGRATION_HEALTH_CHECK_SECONDS = float(os.getenv("INTEGRATION_HEALTH_CHECK_SECONDS", "900"))
+MIN_FREE_DISK_GB = float(os.getenv("MIN_FREE_DISK_GB", "2"))

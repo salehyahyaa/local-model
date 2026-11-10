@@ -9,6 +9,7 @@ import logging
 import httpx
 
 from src.backend import config
+from src.backend.health import jobs
 from src.backend.appointment_calls import client, connection, notify, outcome, store
 
 logger = logging.getLogger(__name__)
@@ -45,7 +46,9 @@ async def run():
     while True:
         try:
             await check_active_calls()
+            jobs.succeeded("call_results")
         except Exception:
             # One bad check must not stop results for every later call.
             logger.exception("Could not check appointment calls")
+            jobs.failed("call_results", "The last check hit an error. See logs/app.log.")
         await asyncio.sleep(config.APPOINTMENT_CALL_POLL_SECONDS)

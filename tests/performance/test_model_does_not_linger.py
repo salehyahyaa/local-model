@@ -58,3 +58,24 @@ def test_closing_the_browser_stops_the_model(server_with_slow_worker, pid_file):
     process_id = pid_file.read_text()
     assert is_running(process_id)
     assert wait_until(lambda: not is_running(process_id), timeout=3)
+
+
+def test_starting_the_app_does_not_load_the_embedding_model():
+    code = "import sys; import src.backend.main; print([name for name in ('fastembed', 'onnxruntime') if name in sys.modules])"
+    result = subprocess.run([sys.executable, "-c", code], cwd=ROOT_DIR, capture_output=True, text=True, check=True)
+    assert result.stdout.strip().splitlines()[-1] == "[]"
+
+
+def test_embedding_worker_exits_after_each_batch(tmp_path, monkeypatch):
+    import asyncio
+
+    from src.backend.models.embeddings import client
+    from tests.fixtures.fake_embedding_worker import PID_FILE_ENV as EMBEDDING_PID_FILE_ENV
+
+    path = tmp_path / "embedding.pid"
+    monkeypatch.setenv(EMBEDDING_PID_FILE_ENV, str(path))
+    monkeypatch.setattr(client, "WORKER_MODULE", "tests.fixtures.fake_embedding_worker")
+
+    asyncio.run(client.embed(["job call with Google"]))
+
+    assert wait_until(lambda: not is_running(path.read_text()))

@@ -1,0 +1,2 @@
+# Install on machines that run meaning-based search:  pip install -r src/backend/models/embeddings/requirements.txt
+fastembed==0.9.1

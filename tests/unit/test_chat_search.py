@@ -3,11 +3,13 @@
 import asyncio
 from datetime import datetime, timezone
 
+import asyncpg
 import pytest
 
 from src.backend import db
 from src.backend.chat_memory import search
 from src.backend.integrations.toolbox import Toolbox
+from src.backend.models.embeddings.client import EmbeddingError
 
 WHEN = datetime(2026, 8, 3, 15, 0, tzinfo=timezone.utc)
 
@@ -87,3 +89,68 @@ def test_tool_errors_reach_the_model_as_errors(monkeypatch):
     monkeypatch.setattr(search, "find", find)
     assert asyncio.run(search.search_past_chats({"query": "x"})).startswith("Error:")
     assert asyncio.run(search.search_past_chats({})).startswith("Error:")
+
+
+# Hybrid: words and meaning together
+
+
+def test_results_found_by_both_rank_first():
+    words = [("message", 1), ("message", 2)]
+    meaning = [("message", 3), ("message", 2)]
+    assert search.merge(words, meaning, limit=3)[0] == ("message", 2)
+    assert set(search.merge(words, meaning, limit=3)) == {("message", 1), ("message", 2), ("message", 3)}
+
+
+def test_merge_respects_the_limit():
+    assert len(search.merge([("message", n) for n in range(20)], limit=5)) == 5
+
+
+@pytest.fixture
+def fake_searches(monkeypatch):
+    seen = {}
+
+    async def find_words(query, after, before):
+        return [("message", 1)]
+
+    async def embed_query(query):
+        return [0.0] * 384
+
+    async def find_similar(vector, after, before, limit):
+        return [
+            {"kind": "message", "id": 2, "similarity": 0.8},
+            {"kind": "action", "id": 5, "similarity": search.SIMILARITY_CUTOFF - 0.01},
+        ]
+
+    async def load_results(keys, query):
+        seen["keys"] = keys
+        return [{"kind": kind, "id": key_id} for kind, key_id in keys]
+
+    monkeypatch.setattr(search, "find_words", find_words)
+    monkeypatch.setattr(search.embeddings, "embed_query", embed_query)
+    monkeypatch.setattr(search.embeddings, "find_similar", find_similar)
+    monkeypatch.setattr(search, "load_results", load_results)
+    return seen
+
+
+def test_hybrid_uses_both_and_drops_unrelated_meaning_matches(fake_searches):
+    asyncio.run(search.find("interview"))
+    assert set(fake_searches["keys"]) == {("message", 1), ("message", 2)}
+
+
+def test_each_method_can_be_measured_alone(fake_searches):
+    asyncio.run(search.find("interview", method=search.WORDS))
+    assert fake_searches["keys"] == [("message", 1)]
+    asyncio.run(search.find("interview", method=search.MEANING))
+    assert fake_searches["keys"] == [("message", 2)]
+
+
+@pytest.mark.parametrize(
+    "error", [EmbeddingError("no model"), asyncpg.UndefinedTableError("no table"), asyncpg.UndefinedObjectError("x")]
+)
+def test_search_falls_back_to_words_when_meaning_is_unavailable(fake_searches, monkeypatch, error):
+    async def broken(query):
+        raise error
+
+    monkeypatch.setattr(search.embeddings, "embed_query", broken)
+    asyncio.run(search.find("interview"))
+    assert fake_searches["keys"] == [("message", 1)]

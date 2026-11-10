@@ -1,4 +1,4 @@
-<section id="control-panel" class="control-panel" aria-labelledby="control-panel-title" hidden>
+<section id="control-panel" class="control-panel" aria-label="Control Panel" hidden>
   <div class="cp-backdrop" aria-hidden="true">
     <span class="cp-orb cp-orb-one"></span>
     <span class="cp-orb cp-orb-two"></span>
@@ -9,24 +9,49 @@
     <div class="cp-content">
       <header class="cp-header">
         <div>
-          <h1 id="control-panel-title" class="cp-title">Control Panel</h1>
           <p id="cp-summary" class="cp-summary" aria-live="polite">Loading your To Do list…</p>
         </div>
-        <span id="cp-last-scan" class="cp-last-scan"></span>
+        <div class="cp-header-end">
+          <span id="cp-last-scan" class="cp-last-scan"></span>
+          <a class="cp-analytics-button" href="/analytics" title="Analytics" aria-label="Open analytics">
+            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h16"/><path d="M7 16v-5"/><path d="M12 16V6"/><path d="M17 16v-8"/></svg>
+          </a>
+        </div>
       </header>
 
+      <div class="cp-grid">
       <section class="cp-card cp-todo" aria-labelledby="cp-todo-title">
         <div class="cp-card-header">
           <h2 id="cp-todo-title" class="cp-card-title">To Do</h2>
           <span id="cp-todo-count" class="cp-count" hidden></span>
         </div>
         <p id="cp-todo-status" class="cp-status" role="status" hidden></p>
-        <ul id="cp-todo-list" class="cp-tasks"></ul>
-        <details id="cp-completed" class="cp-completed" hidden>
-          <summary>Recently completed <span id="cp-completed-count" class="cp-muted"></span></summary>
-          <ul id="cp-completed-list" class="cp-tasks"></ul>
-        </details>
+        <div class="cp-todo-scroll">
+          <ul id="cp-todo-list" class="cp-tasks"></ul>
+          <details id="cp-completed" class="cp-completed" hidden>
+            <summary>Recently completed <span id="cp-completed-count" class="cp-muted"></span></summary>
+            <ul id="cp-completed-list" class="cp-tasks"></ul>
+          </details>
+        </div>
       </section>
+
+      <section class="cp-card cp-alarms" aria-labelledby="cp-alarms-title">
+        <div class="cp-card-header">
+          <h2 id="cp-alarms-title" class="cp-card-title">Alarms</h2>
+          <span id="cp-alarms-count" class="cp-count cp-count-alarm" hidden></span>
+          <button id="cp-alarms-check" class="cp-text-button cp-header-action" type="button">Check now</button>
+        </div>
+        <p id="cp-alarms-status" class="cp-status" role="status" hidden></p>
+        <div class="cp-todo-scroll">
+          <ul id="cp-alarms-list" class="cp-tasks"></ul>
+          <details id="cp-alarms-resolved" class="cp-completed" hidden>
+            <summary>Fixed recently <span id="cp-alarms-resolved-count" class="cp-muted"></span></summary>
+            <ul id="cp-alarms-resolved-list" class="cp-tasks"></ul>
+          </details>
+        </div>
+        <p id="cp-alarms-footer" class="cp-card-footer"></p>
+      </section>
+      </div>
     </div>
   </div>
 </section>

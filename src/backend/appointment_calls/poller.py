@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 
 async def check_call(call, api_key):
     result = None
+    conversation = None
     if call["elevenlabs_conversation_id"] and api_key:
         try:
             conversation = await client.get_conversation(api_key, call["elevenlabs_conversation_id"])
@@ -29,10 +30,10 @@ async def check_call(call, api_key):
     if result is None and call["age_seconds"] > config.APPOINTMENT_CALL_RESULT_TIMEOUT:
         result = outcome.timed_out(call, config.APPOINTMENT_CALL_RESULT_TIMEOUT)
     if result is not None:
-        await save_result(call, result, "check")
+        await save_result(call, result, "check", conversation)
 
 
-async def save_result(call, result, source):
+async def save_result(call, result, source, conversation=None):
     """Shared by the webhook and the backup check. Only the first to finish a call texts the owner."""
     finished = await store.finish_call(call["id"], result["status"], result["message"], result["booked_time"])
     if finished:

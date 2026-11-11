@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 
 import httpx
 
-from src.backend import db, store as chat_store
+from src.backend import config, db, store as chat_store
 from src.backend.appointment_calls import client, connection, poller, store, tool
 from src.backend.integrations.toolbox import Toolbox
 
@@ -21,7 +21,6 @@ ARGUMENTS = {
     "deadline": (FUTURE + timedelta(days=1)).isoformat(),
     "allowed_slots": [SLOT],
 }
-CONNECTION = {"owner_name": "Sam", "api_key": "key", "agent_id": "agent1", "phone_number_id": "phone1"}
 OWN_MODEL_AGENT = {"conversation_config": {"agent": {"prompt": {"llm": "custom-llm"}}}}
 
 
@@ -43,6 +42,15 @@ def fake_elevenlabs(monkeypatch, dialed, conversation=None):
         lambda api_key: real_client(base_url="https://elevenlabs.test", transport=httpx.MockTransport(handler)),
     )
     monkeypatch.setattr(connection, "get_api_key", lambda: "key")
+    set_up_calls(monkeypatch)
+
+
+def set_up_calls(monkeypatch):
+    """Phone calls are set up through the config, the same way the owner does it."""
+    monkeypatch.setattr(config, "CALL_OWNER_NAME", "Sam")
+    monkeypatch.setattr(config, "ELEVENLABS_AGENT_ID", "agent1")
+    monkeypatch.setattr(config, "ELEVENLABS_PHONE_NUMBER_ID", "phone1")
+    monkeypatch.setattr(config, "ELEVENLABS_API_KEY", "key")
 
 
 def run_with_database(database_url, monkeypatch, scenario):
@@ -59,7 +67,6 @@ def run_with_database(database_url, monkeypatch, scenario):
 
 
 async def connect_and_create_chat():
-    await store.create_connection(CONNECTION)
     return (await chat_store.create_conversation())["id"]
 
 
@@ -199,7 +206,10 @@ def test_deleting_the_chat_keeps_the_call_and_posts_nothing(test_database_url, m
     run_with_database(test_database_url, monkeypatch, scenario)
 
 
-def test_connection_can_be_toggled_removed_and_stops_the_tool(test_database_url, monkeypatch):
+def test_the_tool_is_only_offered_once_calls_are_set_up(test_database_url, monkeypatch):
+    for name in ("CALL_OWNER_NAME", "ELEVENLABS_AGENT_ID", "ELEVENLABS_PHONE_NUMBER_ID", "ELEVENLABS_API_KEY"):
+        monkeypatch.setattr(config, name, "")
+
     async def registered():
         box = Toolbox()
         await tool.register(box, 1)
@@ -207,12 +217,7 @@ def test_connection_can_be_toggled_removed_and_stops_the_tool(test_database_url,
 
     async def scenario():
         assert await registered() is False
-        created = await store.create_connection(CONNECTION)
+        set_up_calls(monkeypatch)
         assert await registered() is True
-        assert await store.set_enabled(created["id"], False) is True
-        assert await registered() is False
-        assert (await connection.list_public())[0]["enabled"] is False
-        assert await store.delete_connection(created["id"]) is True
-        assert await connection.list_public() == []
 
     run_with_database(test_database_url, monkeypatch, scenario)

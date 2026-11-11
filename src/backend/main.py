@@ -28,6 +28,7 @@ from src.backend.models.image_generation.routes import router as image_generatio
 from src.backend.models.openai_temporary import model as openai_temporary
 from src.backend.request_logging import log_requests
 from src.backend.notes.routes import router as notes_router
+from src.backend.agentic_purchases.routes import router as agentic_purchases_router
 from src.backend.scheduled_jobs import runner as scheduled_runner
 from src.backend.scheduled_jobs.routes import router as scheduled_router
 from src.backend.routes import router
@@ -103,6 +104,7 @@ app.include_router(image_generation_router)
 app.include_router(analytics_router)
 app.include_router(notes_router)
 app.include_router(scheduled_router)
+app.include_router(agentic_purchases_router)
 
 
 @app.exception_handler(db.DatabaseUnavailableError)

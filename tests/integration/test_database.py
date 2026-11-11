@@ -180,5 +180,5 @@ def test_integration_api_end_to_end(test_database_url, monkeypatch, env_file):
         assert listing["apiIntegrations"][0]["enabled"] is False
 
         assert client.delete(f"/api/integrations/api/{integration_id}").status_code == 200
-        assert client.get("/api/integrations").json() == {"mcpServers": [], "apiIntegrations": [], "phoneCalls": []}
+        assert client.get("/api/integrations").json() == {"mcpServers": [], "apiIntegrations": []}
         assert get_secret("INTEGRATION_WEATHER_API_KEY") == ""

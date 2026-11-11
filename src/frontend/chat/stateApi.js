@@ -6,6 +6,7 @@ export const updateConversation = (id, changes) => request("PATCH", `/api/conver
 export const deleteConversation = (id) => request("DELETE", `/api/conversations/${id}`);
 export const addMessage = (id, role, content, model) =>
   request("POST", `/api/conversations/${id}/messages`, { role, content, model });
+export const clearConversation = (id) => request("DELETE", `/api/conversations/${id}/messages`);
 export const deleteLastMessage = (id) => request("DELETE", `/api/conversations/${id}/messages/last`);
 export const updateSettings = (changes) => request("PATCH", "/api/settings", changes);
 

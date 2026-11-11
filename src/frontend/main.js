@@ -17,6 +17,7 @@ import { setupAutostartMenu } from "./autostart/autostartMenu.js";
 import { setupSettingsPanel } from "./settings/settingsPanel.js";
 import { setupNotes } from "./notes/notes.js";
 import { setupScheduled } from "./scheduled_jobs/scheduled_jobs.js";
+import { setupAgenticPurchases } from "./agentic_purchases/agentic_purchases.js";
 
 chatStore.subscribe("chatsChanged", renderChatList);
 chatStore.subscribe("activeChatChanged", () => {
@@ -39,6 +40,7 @@ setupAutostartMenu();
 setupSettingsPanel();
 setupNotes();
 setupScheduled();
+setupAgenticPurchases();
 setupControlPanelLoader();
 
 let hasShownSaveError = false;

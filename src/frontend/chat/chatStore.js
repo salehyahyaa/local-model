@@ -215,6 +215,15 @@ export function addSavedMessage(chat, message) {
   titleChatFromFirstMessage(chat, message.role, message.content);
 }
 
+/** Empties the active chat, like `clear` in a terminal. The chat itself stays. */
+export function clearActiveChat() {
+  const chat = getActiveChat();
+  if (!chat || isWaitingForReply) return;
+  chat.messages = [];
+  save(() => stateApi.clearConversation(chat.id));
+  notify("activeChatChanged");
+}
+
 export function removeLastMessage(chat) {
   chat.messages.pop();
   save(() => stateApi.deleteLastMessage(chat.id));

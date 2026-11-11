@@ -94,3 +94,22 @@ def test_search_respects_dates_and_deleted_chats(test_database_url, monkeypatch)
         return await search.find("dentist")
 
     assert run_with_database(test_database_url, monkeypatch, scenario) == []
+
+
+def test_clearing_a_chat_removes_its_messages_and_actions_but_keeps_the_chat(test_database_url, monkeypatch):
+    async def scenario():
+        chat = await new_chat()
+        await store.add_message(chat, "user", "hello")
+        await activity.save(chat, "Gmail → search_email", {}, activity.DONE, "found")
+        other_chat = await new_chat()
+        await store.add_message(other_chat, "user", "keep me")
+        assert await store.clear_conversation(chat)
+        assert not await store.clear_conversation(999999)
+        return (
+            await db.pool.fetchval("SELECT count(*) FROM messages WHERE conversation_id = $1", chat),
+            await db.pool.fetchval("SELECT count(*) FROM tool_activity WHERE conversation_id = $1", chat),
+            await db.pool.fetchval("SELECT count(*) FROM conversations WHERE id = $1", chat),
+            await db.pool.fetchval("SELECT count(*) FROM messages WHERE conversation_id = $1", other_chat),
+        )
+
+    assert run_with_database(test_database_url, monkeypatch, scenario) == (0, 0, 1, 1)

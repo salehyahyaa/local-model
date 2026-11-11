@@ -1,0 +1,73 @@
+.purchases-view[hidden],
+.purchases-empty[hidden],
+.purchases-status[hidden] { display: none; }
+
+.purchases-view {
+  flex: 1;
+  min-width: 0;
+  background: var(--background);
+  color: var(--text);
+}
+
+.purchases-scroll {
+  height: 100%;
+  overflow-y: auto;
+  padding: 0 32px 56px;
+}
+
+.purchases-scroll > * {
+  max-width: 760px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.purchases-header { padding-top: 28px; margin-bottom: 12px; }
+.purchases-title { margin: 0; font-size: 22px; font-weight: 600; }
+.purchases-connection {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+.purchases-logo svg { width: 28px; height: 28px; }
+.purchases-connection-text { font-size: 13.5px; color: var(--muted-text); }
+.purchases-connection-name { font-size: 14.5px; font-weight: 500; color: var(--text); }
+.purchases-connection-detail { margin-top: 2px; font-size: 13px; color: var(--muted-text); }
+.purchases-connection-detail.problem { color: var(--cp-chip-red-text); }
+.purchases-status, .purchases-empty { font-size: 13.5px; color: var(--muted-text); }
+
+.purchases-list { margin: 0; padding: 0; list-style: none; }
+
+.purchase {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.purchase-body { flex: 1; min-width: 0; }
+.purchase-merchant { font-size: 15px; font-weight: 500; }
+.purchase-meta { margin-top: 4px; font-size: 12.5px; color: var(--muted-text); }
+
+.purchase-side { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
+.purchase-amount { font-size: 15px; font-weight: 500; font-variant-numeric: tabular-nums; }
+
+.purchase-status {
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--hover);
+  font-size: 12px;
+  color: var(--muted-text);
+}
+
+.purchase-amount.declined { color: var(--muted-text); text-decoration: line-through; }
+.purchase-status.posted { color: var(--cp-accent-text); }
+.purchase-status.declined { color: var(--cp-chip-red-text); }
+
+@media (max-width: 600px) {
+  .purchases-scroll { padding: 0 16px 40px; }
+}

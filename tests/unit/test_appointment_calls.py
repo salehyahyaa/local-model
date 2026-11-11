@@ -654,7 +654,7 @@ def post_webhook(monkeypatch, event, call=None, sign=True):
     async def find_active_call(conversation_id):
         return call if call and conversation_id == call["elevenlabs_conversation_id"] else None
 
-    async def save_result(found, result, source):
+    async def save_result(found, result, source, conversation=None):
         saved.append((found["id"], result["status"], result["message"], source))
 
     monkeypatch.setattr(store, "find_active_call", find_active_call)

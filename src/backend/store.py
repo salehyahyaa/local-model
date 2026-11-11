@@ -97,6 +97,21 @@ async def delete_conversation(conversation_id):
     return result != "DELETE 0"
 
 
+async def clear_conversation(conversation_id):
+    """Deletes every message and tool action in a chat but keeps the chat. Returns False if not found."""
+    pool = db.require_pool()
+    async with pool.acquire() as connection, connection.transaction():
+        owns_conversation = await connection.fetchval(
+            "SELECT EXISTS (SELECT 1 FROM conversations WHERE id = $1 AND user_id = $2)", conversation_id, db.user_id
+        )
+        if not owns_conversation:
+            return False
+        await connection.execute("DELETE FROM messages WHERE conversation_id = $1", conversation_id)
+        await connection.execute("DELETE FROM tool_activity WHERE conversation_id = $1", conversation_id)
+        await connection.execute("UPDATE conversations SET updated_at = now() WHERE id = $1", conversation_id)
+        return True
+
+
 async def add_message(conversation_id, role, content, model=None):
     pool = db.require_pool()
     async with pool.acquire() as connection, connection.transaction():

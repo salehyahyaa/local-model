@@ -27,6 +27,7 @@
 .sidebar.collapsed #archive-button { order: 3; }
 .sidebar.collapsed #notes-button { order: 3; }
 .sidebar.collapsed #scheduled-button { order: 3; }
+.sidebar.collapsed #agentic-purchases-button { order: 3; }
 .sidebar.collapsed #search-button { order: 4; }
 .sidebar.collapsed #settings-button { order: 5; }
 .sidebar.collapsed #control-panel-button { order: 6; }

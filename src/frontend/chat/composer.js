@@ -55,6 +55,13 @@ async function handleSubmit(event) {
   }
   if (!text && !hasAttachedDocuments()) return;
 
+  if (text === "/clear") {
+    messageInput.value = "";
+    handleInput();
+    chatStore.clearActiveChat();
+    return;
+  }
+
   messageInput.value = "";
   handleInput();
   sendButton.disabled = true;

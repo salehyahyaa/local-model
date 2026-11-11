@@ -3,6 +3,16 @@ import * as chatStore from "./chatStore.js";
 const messagesScroll = document.getElementById("messages-scroll");
 const messagesContainer = document.getElementById("messages");
 
+/** How close to the bottom (in pixels) still counts as "at the bottom". */
+const STICK_TO_BOTTOM_PX = 80;
+/** True while the reader is at the bottom; scrolling up turns it off so new text doesn't pull them back down. */
+let followsNewText = true;
+
+messagesScroll.addEventListener("scroll", () => {
+  const distanceFromBottom = messagesScroll.scrollHeight - messagesScroll.scrollTop - messagesScroll.clientHeight;
+  followsNewText = distanceFromBottom <= STICK_TO_BOTTOM_PX;
+});
+
 export function renderMessages() {
   messagesContainer.innerHTML = "";
   for (const message of chatStore.getActiveChat().messages) {
@@ -14,6 +24,7 @@ export function renderMessages() {
       setDocumentCardSaved(addDocumentCard(bubble, document.fileName), document);
     }
   }
+  scrollToBottom({ force: true });
 }
 
 const copyIconSvg =
@@ -65,7 +76,8 @@ export function addMessageBubble(role, text) {
   bubble.append(textElement, createCopyButton(bubble));
   showText(textElement, bubble, text);
   messagesContainer.appendChild(bubble);
-  scrollToBottom();
+  // Your own new message always brings you to the bottom.
+  scrollToBottom({ force: role === "user" });
   return bubble;
 }
 
@@ -130,6 +142,9 @@ export function addToolNote(label, beforeElement) {
   scrollToBottom();
 }
 
-export function scrollToBottom() {
+/** Follows new content only while the reader is at the bottom, unless forced. */
+export function scrollToBottom({ force = false } = {}) {
+  if (!force && !followsNewText) return;
+  followsNewText = true;
   messagesScroll.scrollTop = messagesScroll.scrollHeight;
 }

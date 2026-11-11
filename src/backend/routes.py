@@ -121,6 +121,17 @@ async def add_message(conversation_id: int, request: Request):
     return {"id": message_id}
 
 
+@router.delete("/conversations/{conversation_id}/messages")
+async def clear_conversation(conversation_id: int):
+    image_files = await image_store.files_in_conversation(conversation_id)
+    document_keys = await documents.storage_keys_in_conversation(conversation_id)
+    if not await store.clear_conversation(conversation_id):
+        return not_found()
+    image_store.delete_files(image_files)
+    documents.delete_files(document_keys)
+    return {"ok": True}
+
+
 @router.delete("/conversations/{conversation_id}/messages/last")
 async def delete_last_message(conversation_id: int):
     image_files = await store.image_files_of_last_message(conversation_id)

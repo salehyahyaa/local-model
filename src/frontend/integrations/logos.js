@@ -7,6 +7,11 @@ const googleCalendarLogoSvg =
 const phoneLogoSvg =
   '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-label="Phone calls" role="img"><path d="M21 16.5v3a2 2 0 0 1-2.2 2A18 18 0 0 1 2.5 5.2 2 2 0 0 1 4.5 3h3a2 2 0 0 1 2 1.7l.4 2.6a2 2 0 0 1-.6 1.8L8 10.4a15 15 0 0 0 5.6 5.6l1.3-1.3a2 2 0 0 1 1.8-.6l2.6.4a2 2 0 0 1 1.7 2Z"/></svg>';
 
+export const robinhoodLogoSvg =
+  '<svg viewBox="0 0 24 24" width="16" height="16" aria-label="Robinhood" role="img"><rect width="24" height="24" rx="6" fill="#000"/><g transform="translate(4 4) scale(.6667)"><path fill="#ccff00" d="M2.84 24h.53c.096 0 .192-.048.224-.128C7.591 13.696 11.94 8.656 14.67 5.638c.112-.128.064-.225-.096-.225h-4.88a.55.55 0 0 0-.45.225L5.746 9.972c-.514.642-.642 1.236-.642 2.086v4.43c-1.14 3.194-1.862 5.361-2.392 7.32-.032.125.016.192.129.192M20.447.646c-.754-.802-4.157-.834-5.73-.224a3 3 0 0 0-.786.465 41 41 0 0 0-3.323 3.178c-.112.113-.064.225.097.225h5.409c.497 0 .786.289.786.786v6.1c0 .16.128.208.225.064l3.258-4.254c.53-.69.69-.898.835-1.861.192-1.413.08-3.58-.77-4.479m-6.982 16.18 2.231-3.676a.7.7 0 0 0 .064-.29V6.73c0-.16-.112-.225-.224-.097-3.355 3.74-5.971 7.672-8.395 12.407-.06.12.016.225.16.177l5.009-1.54c.565-.174.882-.402 1.155-.852"/></g></svg>';
+
+const ROBINHOOD_HOST = "banking-agent.robinhood.com";
+
 const SERVICE_LOGOS = {
   "Chat model": '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-label="Chat model" role="img"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8Z"/><path d="M19 16v4M17 18h4"/></svg>',
   "Telegram bot": '<svg viewBox="0 0 24 24" width="16" height="16" aria-label="Telegram" role="img"><circle cx="12" cy="12" r="10" fill="#fff"/><path fill="#26a5e4" d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>',
@@ -23,7 +28,18 @@ function builtInLogo(integration) {
   if (integration.provider === "google-calendar") {
     return googleCalendarLogoSvg;
   }
+  if (hostOf(integration.target) === ROBINHOOD_HOST) {
+    return robinhoodLogoSvg;
+  }
   return integration.kind === "phone" ? phoneLogoSvg : null;
+}
+
+function hostOf(target) {
+  try {
+    return new URL(target).hostname;
+  } catch {
+    return null;
+  }
 }
 
 function siteIconUrl(target) {

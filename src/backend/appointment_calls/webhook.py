@@ -65,7 +65,7 @@ async def handle_event(event):
         return
     result = read_result(event, call)
     if result is not None:
-        await poller.save_result(call, result, "webhook")
+        await poller.save_result(call, result, "webhook", data)
 
 
 @router.post("/api/calls/webhook")

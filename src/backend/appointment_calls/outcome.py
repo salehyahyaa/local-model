@@ -23,6 +23,7 @@ def format_slots(slots, timezone_name):
     return "; ".join(format_slot(slot, timezone_name) for slot in slots)
 
 
+
 def collected_value(analysis, name):
     item = (analysis.get("data_collection_results") or {}).get(name)
     return item.get("value") if isinstance(item, dict) else None

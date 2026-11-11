@@ -106,6 +106,20 @@ export async function createChat() {
   selectChat(chat.id);
 }
 
+/** Opens a chat the server made on its own, like a scheduled task's run, loading it first if it's new here. */
+export async function openSavedChat(chatId) {
+  if (!findChat(chatId) && !isWaitingForReply) {
+    try {
+      chats = (await stateApi.loadState()).conversations;
+    } catch {
+      return false;
+    }
+  }
+  if (!findChat(chatId)) return false;
+  selectChat(chatId);
+  return true;
+}
+
 export function selectChat(chatId) {
   activeChatId = chatId;
   save(() => stateApi.updateSettings({ activeConversationId: chatId }));

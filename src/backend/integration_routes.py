@@ -5,8 +5,6 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
-from src.backend.appointment_calls import connection as phone_calls
-from src.backend.appointment_calls import store as phone_call_store
 from src.backend.integrations import api_store, mcp_store, service
 from src.backend.integrations.errors import DuplicateNameError, LoginNotConfirmed, McpError
 from src.backend.integrations.gmail.mailbox import GmailLoginError
@@ -35,11 +33,10 @@ async def require_same_origin(request: Request):
 
 router = APIRouter(prefix="/api/integrations", dependencies=[Depends(require_same_origin)])
 
-ENABLE_FUNCTIONS = {"mcp": mcp_store.set_enabled, "api": api_store.set_enabled, "phone": phone_call_store.set_enabled}
+ENABLE_FUNCTIONS = {"mcp": mcp_store.set_enabled, "api": api_store.set_enabled}
 REMOVE_FUNCTIONS = {
     "mcp": service.remove_mcp_server,
     "api": service.remove_api_integration,
-    "phone": phone_calls.remove,
 }
 
 
@@ -69,13 +66,12 @@ def duplicate_name_response(name):
 
 @router.get("")
 async def list_integrations():
-    return {**await service.list_integrations(), "phoneCalls": await phone_calls.list_public()}
+    return await service.list_integrations()
 
 
 @router.get("/health")
 async def integration_health():
-    connections, phone = await asyncio.gather(service.check_health(), phone_calls.check_health())
-    return {"integrations": [*connections, *phone]}
+    return {"integrations": await service.check_health()}
 
 
 @router.post("/mcp", status_code=201)

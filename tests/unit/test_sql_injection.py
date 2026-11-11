@@ -10,7 +10,7 @@ from src.backend.main import app
 BACKEND_DIR = Path(__file__).resolve().parents[2] / "src" / "backend"
 QUERY_METHODS = {"execute", "executemany", "fetch", "fetchrow", "fetchval"}
 # The only things allowed inside SQL f-strings: fixed column lists, and "column = $n" built from a fixed field map.
-SAFE_SQL_NAMES = {"INTEGRATION_COLUMNS", "SERVER_COLUMNS", "assignments"}
+SAFE_SQL_NAMES = {"INTEGRATION_COLUMNS", "SERVER_COLUMNS", "TASK_COLUMNS", "assignments"}
 # migrations.py runs the .sql files from db/migrations, which are part of the code.
 TRUSTED_FILES = {BACKEND_DIR / "migrations.py"}
 

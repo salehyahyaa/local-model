@@ -2,7 +2,6 @@ import * as integrationsApi from "./integrationsApi.js";
 import { openIntegrationForm } from "./integrationForm.js";
 import { openGmailForm } from "./gmailForm.js";
 import { openGoogleCalendarForm } from "./googleCalendarForm.js";
-import { openPhoneCallsForm } from "./phoneCallsForm.js";
 import { attachUserFiles } from "../chat/attachment.js";
 import { createLogo } from "./logos.js";
 
@@ -13,7 +12,6 @@ const message = document.getElementById("integrations-message");
 const addIntegrationButton = document.getElementById("add-integration-button");
 const addApiButton = document.getElementById("add-api-button");
 const addGoogleCalendarButton = document.getElementById("add-google-calendar-button");
-const addPhoneCallsButton = document.getElementById("add-phone-calls-button");
 const TARGET_PREFIXES = { mcp: "MCP", api: "API", phone: "Calling for" };
 
 let gmailConnected = false;
@@ -143,10 +141,9 @@ async function refreshList() {
     showMessage(error.message);
     return;
   }
-  const allIntegrations = [...integrations.mcpServers, ...integrations.apiIntegrations, ...integrations.phoneCalls];
+  const allIntegrations = [...integrations.mcpServers, ...integrations.apiIntegrations];
   gmailConnected = allIntegrations.some((integration) => integration.provider === "gmail");
   addGoogleCalendarButton.hidden = allIntegrations.some((integration) => integration.provider === "google-calendar");
-  addPhoneCallsButton.hidden = integrations.phoneCalls.length > 0;
   if (refresh !== latestRefresh) {
     return;
   }
@@ -205,11 +202,6 @@ export function setupIntegrationsMenu() {
   addGoogleCalendarButton.addEventListener("click", () => {
     closeMenu();
     openGoogleCalendarForm(openMenu);
-  });
-
-  addPhoneCallsButton.addEventListener("click", () => {
-    closeMenu();
-    openPhoneCallsForm(openMenu);
   });
 
   document.addEventListener("click", (event) => {

@@ -57,6 +57,19 @@ async def list_active_calls():
     return [row_to_call(row) for row in rows]
 
 
+async def find_active_call(elevenlabs_conversation_id):
+    """The call still waiting for a result that ElevenLabs knows by this id, or None."""
+    pool = db.require_pool()
+    row = await pool.fetchrow(
+        """SELECT *, EXTRACT(EPOCH FROM now() - created_at) AS age_seconds
+           FROM appointment_calls
+           WHERE user_id = $1 AND status = 'calling' AND elevenlabs_conversation_id = $2""",
+        db.user_id,
+        elevenlabs_conversation_id,
+    )
+    return row_to_call(row) if row else None
+
+
 async def finish_call(call_id, status, result_message, booked_time=None, post_to_chat=True):
     """Saves the outcome and posts it to the chat together. Returns False if it was already finished."""
     pool = db.require_pool()
@@ -104,39 +117,3 @@ async def list_recent_calls():
         }
         for row in rows
     ]
-
-
-async def get_connection():
-    pool = db.require_pool()
-    return await pool.fetchrow("SELECT * FROM phone_call_connections WHERE user_id = $1", db.user_id)
-
-
-async def create_connection(connection):
-    pool = db.require_pool()
-    return await pool.fetchrow(
-        """INSERT INTO phone_call_connections (user_id, owner_name, agent_id, phone_number_id)
-           VALUES ($1, $2, $3, $4) RETURNING *""",
-        db.user_id,
-        connection["owner_name"],
-        connection["agent_id"],
-        connection["phone_number_id"],
-    )
-
-
-async def set_enabled(connection_id, enabled):
-    pool = db.require_pool()
-    result = await pool.execute(
-        "UPDATE phone_call_connections SET enabled = $3, updated_at = now() WHERE id = $1 AND user_id = $2",
-        connection_id,
-        db.user_id,
-        enabled,
-    )
-    return result != "UPDATE 0"
-
-
-async def delete_connection(connection_id):
-    pool = db.require_pool()
-    result = await pool.execute(
-        "DELETE FROM phone_call_connections WHERE id = $1 AND user_id = $2", connection_id, db.user_id
-    )
-    return result != "DELETE 0"

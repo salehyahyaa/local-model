@@ -5,7 +5,10 @@ import httpx
 from src.backend import config
 
 CUSTOM_LLM = "custom-llm"
+# The one hosted model the owner approved: ElevenLabs' own copy of the open-weight DeepSeek.
+APPROVED_HOSTED_LLM = "deepseek-v41-flash"
 FALLS_BACK_TO_HOSTED_MODELS = "override"
+BACKUP_DISABLED = "disabled"
 MAX_ERROR_CHARACTERS = 300
 
 
@@ -39,13 +42,16 @@ async def get_phone_number(api_key, phone_number_id):
 
 
 def uses_only_owner_model(agent):
-    """New agents default to a hosted model, and a backup list can hand a call to one. Neither is allowed here."""
+    """Only the owner's own model or the approved DeepSeek may run a call, and no backup may hand it to another."""
     try:
         prompt = agent["conversation_config"]["agent"]["prompt"]
     except (KeyError, TypeError):
         return False
-    backup = prompt.get("backup_llm_config") or {}
-    return prompt.get("llm") == CUSTOM_LLM and backup.get("preference") != FALLS_BACK_TO_HOSTED_MODELS
+    backup = (prompt.get("backup_llm_config") or {}).get("preference")
+    if prompt.get("llm") == CUSTOM_LLM:
+        return backup != FALLS_BACK_TO_HOSTED_MODELS
+    # A hosted model's default backup is other hosted models, so it must be turned off.
+    return prompt.get("llm") == APPROVED_HOSTED_LLM and backup == BACKUP_DISABLED
 
 
 async def start_call(api_key, agent_id, phone_number_id, to_number, variables):

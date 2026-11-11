@@ -10,12 +10,13 @@ import { setupIntegrationsMenu } from "./integrations/integrationsMenu.js";
 import { setupIntegrationForm } from "./integrations/integrationForm.js";
 import { setupGmailForm } from "./integrations/gmailForm.js";
 import { setupGoogleCalendarForm } from "./integrations/googleCalendarForm.js";
-import { setupPhoneCallsForm } from "./integrations/phoneCallsForm.js";
 import { watchCalls } from "./calls/callWatcher.js";
 import { applySelectedModel, setupModelPicker } from "./models/modelPicker.js";
 import { setupImageDrop } from "./chat/attachment.js";
 import { setupAutostartMenu } from "./autostart/autostartMenu.js";
 import { setupSettingsPanel } from "./settings/settingsPanel.js";
+import { setupNotes } from "./notes/notes.js";
+import { setupScheduled } from "./scheduled_jobs/scheduled_jobs.js";
 
 chatStore.subscribe("chatsChanged", renderChatList);
 chatStore.subscribe("activeChatChanged", () => {
@@ -32,11 +33,12 @@ setupIntegrationsMenu();
 setupIntegrationForm();
 setupGmailForm();
 setupGoogleCalendarForm();
-setupPhoneCallsForm();
 setupModelPicker();
 setupImageDrop();
 setupAutostartMenu();
 setupSettingsPanel();
+setupNotes();
+setupScheduled();
 setupControlPanelLoader();
 
 let hasShownSaveError = false;

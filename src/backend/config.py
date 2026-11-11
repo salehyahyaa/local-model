@@ -43,14 +43,28 @@ TELEGRAM_CHAT_TIMEOUT = float(os.getenv("TELEGRAM_CHAT_TIMEOUT", "1800"))
 APP_URL = os.getenv("APP_URL", "http://127.0.0.1:8000")
 
 ELEVENLABS_API_URL = os.getenv("ELEVENLABS_API_URL", "https://api.elevenlabs.io")
+# Phone calls are set up here, not from the + menu: the owner just asks the model to call.
+ELEVENLABS_API_KEY = get_secret("ELEVENLABS_API_KEY")
+ELEVENLABS_AGENT_ID = os.getenv("ELEVENLABS_AGENT_ID", "").strip()
+ELEVENLABS_PHONE_NUMBER_ID = os.getenv("ELEVENLABS_PHONE_NUMBER_ID", "").strip()
+CALL_OWNER_NAME = os.getenv("CALL_OWNER_NAME", "").strip()
 ELEVENLABS_TIMEOUT = float(os.getenv("ELEVENLABS_TIMEOUT", "10"))
 APPOINTMENT_CALL_RESULT_TIMEOUT = float(os.getenv("APPOINTMENT_CALL_RESULT_TIMEOUT", "1800"))
 APPOINTMENT_CALL_POLL_SECONDS = float(os.getenv("APPOINTMENT_CALL_POLL_SECONDS", "15"))
+# Call results arrive by webhook. Its own small server is the only thing the tunnel exposes.
+ELEVENLABS_WEBHOOK_SECRET = get_secret("ELEVENLABS_WEBHOOK_SECRET")
+APPOINTMENT_WEBHOOK_HOST = os.getenv("APPOINTMENT_WEBHOOK_HOST", "127.0.0.1")
+APPOINTMENT_WEBHOOK_PORT = int(os.getenv("APPOINTMENT_WEBHOOK_PORT", "8765"))
+# With webhooks on, polling is only a backup for calls whose webhook is this late.
+APPOINTMENT_CALL_FIRST_CHECK_SECONDS = float(os.getenv("APPOINTMENT_CALL_FIRST_CHECK_SECONDS", "20"))
+APPOINTMENT_CALL_WEBHOOK_GRACE = float(os.getenv("APPOINTMENT_CALL_WEBHOOK_GRACE", "300"))
+APPOINTMENT_CALL_BACKUP_POLL_SECONDS = float(os.getenv("APPOINTMENT_CALL_BACKUP_POLL_SECONDS", "120"))
 
 # Meaning-based search: where the local embedding model is kept, and how often new messages are embedded.
 EMBEDDING_CACHE_DIR = ROOT_DIR / "data" / "models" / "embeddings"
 EMBEDDING_POLL_SECONDS = float(os.getenv("EMBEDDING_POLL_SECONDS", "60"))
 TASK_SCAN_SECONDS = float(os.getenv("TASK_SCAN_SECONDS", "300"))
+SCHEDULED_TASK_POLL_SECONDS = float(os.getenv("SCHEDULED_TASK_POLL_SECONDS", "30"))
 TASK_MODEL_EMAILS_PER_SCAN = int(os.getenv("TASK_MODEL_EMAILS_PER_SCAN", "100"))
 HEALTH_CHECK_SECONDS = float(os.getenv("HEALTH_CHECK_SECONDS", "60"))
 INTEGRATION_HEALTH_CHECK_SECONDS = float(os.getenv("INTEGRATION_HEALTH_CHECK_SECONDS", "900"))

@@ -38,10 +38,10 @@ def send_follow_up(approval_id, text):
     return give_answer(approval_id, Answer(False, text))
 
 
-async def wait(approval_id, decision):
+async def wait(approval_id, decision, timeout=None):
     """Anything except an explicit yes counts as no, including no answer in time."""
     try:
-        return await asyncio.wait_for(decision, APPROVAL_TIMEOUT)
+        return await asyncio.wait_for(decision, timeout or APPROVAL_TIMEOUT)
     except asyncio.TimeoutError:
         return Answer(False)
     finally:

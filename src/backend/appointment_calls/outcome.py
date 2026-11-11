@@ -53,6 +53,7 @@ def fits_a_slot(moment, slots):
 
 def with_notes(message, analysis):
     parts = [
+        ("Order total", collected_value(analysis, "order_total")),
         ("Alternatives offered", collected_value(analysis, "alternatives")),
         ("Notes", collected_value(analysis, "notes")),
         ("Summary", analysis.get("transcript_summary")),
@@ -63,12 +64,23 @@ def with_notes(message, analysis):
     return f"{message}\n\n{NOTES_HEADING}\n" + "\n".join(lines)[:MAX_NOTE_CHARACTERS]
 
 
+def failure_detail(conversation):
+    """ElevenLabs' own reason, like the agent not starting because the account is out of credits."""
+    metadata = conversation.get("metadata")
+    error = metadata.get("error") if isinstance(metadata, dict) else None
+    reason = error.get("reason") if isinstance(error, dict) else None
+    if not isinstance(reason, str) or not reason.strip():
+        return ""
+    return f" ElevenLabs said: {reason.strip()[:200]} Check your ElevenLabs credits and agent."
+
+
 def read_outcome(conversation, call):
     """Returns {status, message, booked_time}, or None while the call hasn't finished."""
     status = conversation.get("status") if isinstance(conversation, dict) else None
     name = call["contact_name"]
     if status == "failed":
-        return {"status": "failed", "message": f"The call to {name} failed.", "booked_time": None}
+        message = f"The call to {name} failed.{failure_detail(conversation)}"
+        return {"status": "failed", "message": message, "booked_time": None}
     if status != "done":
         return None
 
@@ -92,6 +104,15 @@ def read_outcome(conversation, call):
         return {"status": "needs_review", "message": message, "booked_time": moment}
     message = with_notes(f"Booked with {name}: {when}.", analysis)
     return {"status": "booked", "message": message, "booked_time": moment}
+
+
+FAILURE_REASONS = {"busy": "the line was busy", "no-answer": "nobody answered"}
+
+
+def did_not_connect(call, reason):
+    """The call never connected, as ElevenLabs' call_initiation_failure webhook reports it."""
+    why = FAILURE_REASONS.get(reason, "it didn't connect")
+    return {"status": "failed", "message": f"The call to {call['contact_name']} failed: {why}.", "booked_time": None}
 
 
 def timed_out(call, seconds):

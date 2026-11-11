@@ -27,6 +27,9 @@ from src.backend.models.image_generation.routes import ExposeConnectionEvents
 from src.backend.models.image_generation.routes import router as image_generation_router
 from src.backend.models.openai_temporary import model as openai_temporary
 from src.backend.request_logging import log_requests
+from src.backend.notes.routes import router as notes_router
+from src.backend.scheduled_jobs import runner as scheduled_runner
+from src.backend.scheduled_jobs.routes import router as scheduled_router
 from src.backend.routes import router
 from src.backend.settings_panel.routes import router as settings_panel_router
 from src.backend.task_tracker import poller as task_poller
@@ -58,8 +61,13 @@ async def lifespan(app):
     embedding_updates = asyncio.create_task(search_embeddings.run()) if db.pool is not None else None
     if embedding_updates is not None:
         health_jobs.watch(search_embeddings.JOB, embedding_updates)
+    scheduled_tasks = asyncio.create_task(scheduled_runner.run()) if db.pool is not None else None
+    if scheduled_tasks is not None:
+        health_jobs.watch(scheduled_runner.JOB, scheduled_tasks)
     health_checks = asyncio.create_task(health_monitor.run())
     yield
+    if scheduled_tasks is not None:
+        scheduled_tasks.cancel()
     health_checks.cancel()
     if embedding_updates is not None:
         embedding_updates.cancel()
@@ -93,6 +101,8 @@ app.include_router(health_router)
 app.include_router(integration_router)
 app.include_router(image_generation_router)
 app.include_router(analytics_router)
+app.include_router(notes_router)
+app.include_router(scheduled_router)
 
 
 @app.exception_handler(db.DatabaseUnavailableError)

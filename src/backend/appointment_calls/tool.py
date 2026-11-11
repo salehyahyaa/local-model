@@ -1,35 +1,47 @@
 """The tool the chat model uses. It needs the owner's approval every time, because it phones a real person."""
 
+import asyncio
 import logging
 
 import asyncpg
 import httpx
 
 from src.backend import db
-from src.backend.appointment_calls import client, connection, outcome, store
-from src.backend.appointment_calls.validation import APPOINTMENT, RESERVATION, validate_call
+from src.backend.appointment_calls import client, connection, outcome, poller, store
+from src.backend.appointment_calls.validation import KINDS, validate_call
 
 logger = logging.getLogger(__name__)
 
 ACTION_NAME = "place_appointment_call"
 NOT_PLACED = "Error: the call was not placed. "
 DO_NOT_RETRY = "Do not try again unless the owner asks."
+first_checks = set()  # Holds the tasks so they aren't garbage collected before they run.
 DESCRIPTION = (
-    "Phone someone with an AI voice agent to book a reservation or appointment for the owner. Use only when the "
-    "owner asks. If the owner didn't give the phone number, time or, for a reservation, the party size, ask in the "
-    "chat before using this. Never guess them. The agent can only accept times inside allowed_slots, so check the "
-    "owner's calendar first if a calendar tool is available, and remove any slot that conflicts. The result is "
-    "posted in this chat and sent to the owner on Telegram when the call ends."
+    "Phone someone with an AI voice agent to book a reservation or appointment, or place a pickup order, for the "
+    "owner. Use only when the owner asks. If the owner didn't give the phone number, time, the party size for a "
+    "reservation, or exactly what to order for a pickup order, ask in the chat before using this. Never guess them "
+    "or fill in items yourself. The agent can only accept times inside allowed_slots, so check the owner's calendar "
+    "first if a calendar tool is available, and remove any slot that conflicts. The result is posted in this chat "
+    "and sent to the owner on Telegram when the call ends."
 )
 TIME_FORMAT = "ISO 8601 with a UTC offset, like 2026-11-10T14:00:00-05:00"
 SCHEMA = {
     "type": "object",
     "properties": {
-        "kind": {"type": "string", "enum": [RESERVATION, APPOINTMENT], "description": "What is being booked."},
+        "kind": {"type": "string", "enum": list(KINDS), "description": "What the call is for."},
         "contact_name": {"type": "string", "description": "Who is being called."},
         "phone_number": {"type": "string", "description": "International format, like +14155550123."},
         "reason": {"type": "string", "description": "What the booking is for. Shared with the person called."},
         "party_size": {"type": "integer", "description": "How many people. Required for a reservation."},
+        "order_items": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Required for a pickup order: each item exactly as the owner said it, with quantity.",
+        },
+        "if_unavailable": {
+            "type": "string",
+            "description": "What to do if no allowed time or an item isn't available, only if the owner said so.",
+        },
         "booking_name": {
             "type": "string",
             "description": "The name to book under, if the owner gave one. Otherwise leave this out.",
@@ -62,7 +74,9 @@ def build_variables(call, owner_name):
         "owner_name": owner_name,
         "booking_name": call["booking_name"] or owner_name,
         "contact_name": call["contact_name"],
+        "kind": call["kind"].replace("_", " "),
         "reason": call["reason"],
+        "if_unavailable": call["if_unavailable"],
         "timezone": call["timezone"],
         "deadline": outcome.format_time(call["deadline"], call["timezone"]),
         "allowed_slots": outcome.format_slots(call["allowed_slots"], call["timezone"]),
@@ -80,7 +94,7 @@ async def place_call(arguments, conversation_id):
     settings = await connection.load_connection()
     api_key = connection.get_api_key()
     if settings is None or not settings["enabled"] or not api_key:
-        return f"{NOT_PLACED}Phone calls aren't connected."
+        return f"{NOT_PLACED}Phone calls aren't set up in the app's config."
 
     # Checked on every call: the agent's settings can change in ElevenLabs after it was connected here.
     try:
@@ -120,6 +134,8 @@ async def dial(call_id, call, settings, api_key):
     logger.info("Started appointment call %s", call_id)
     if not await save_safely(store.save_call_ids(call_id, conversation, call_sid)):
         return f"Calling {name} now, but the result can't be tracked, so it won't appear in this chat. {DO_NOT_RETRY}"
+    first_checks.add(task := asyncio.create_task(poller.check_soon(conversation)))
+    task.add_done_callback(first_checks.discard)
     return f"Calling {name} now. The result will be posted in this chat when the call ends."
 
 
@@ -145,7 +161,7 @@ def make_handler(conversation_id):
 
 
 async def register(toolbox, conversation_id):
-    """Adds the tool when phone calls are connected and turned on in the + menu."""
+    """Adds the tool when phone calls are set up in the config."""
     settings = await connection.load_connection()
     if settings is None or not settings["enabled"]:
         return

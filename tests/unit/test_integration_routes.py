@@ -147,10 +147,6 @@ def test_working_phone_connection_has_no_problem(monkeypatch):
     assert phone_check(monkeypatch) == [{"kind": "phone", "id": 9, "problem": None}]
 
 
-def test_phone_connection_without_a_key_is_broken(monkeypatch):
-    assert phone_check(monkeypatch, api_key="")[0]["problem"] == "The ElevenLabs key is missing."
-
-
 def test_rejected_elevenlabs_key_is_reported(monkeypatch):
     request = httpx.Request("GET", "https://elevenlabs.test")
     error = httpx.HTTPStatusError("bad", request=request, response=httpx.Response(401, request=request))

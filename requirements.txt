@@ -6,3 +6,4 @@ numpy==2.2.5
 asyncpg==0.32.0
 python-dotenv==1.2.4
 keyring==25.7.0
+elevenlabs==2.77.0

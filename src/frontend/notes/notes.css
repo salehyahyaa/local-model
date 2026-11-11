@@ -1,0 +1,402 @@
+/* The Notes page replaces the chat. The chat's own hide rule lives in the Control Panel's
+   stylesheet, which only loads once that panel is opened, so it's repeated here. */
+.main[hidden],
+.notes-view[hidden],
+.notes-drawer[hidden],
+.notes-status[hidden] { display: none; }
+
+/* Notes look like macOS Stickies: flat pale paper, square corners, plain black text. */
+.note-yellow { --note-fill: #fdf5a6; }
+.note-pink { --note-fill: #f9cfe0; }
+.note-blue { --note-fill: #cfe6fb; }
+.note-green { --note-fill: #d3f2c4; }
+.note-purple { --note-fill: #e3d5f7; }
+
+/* ---------- Notes page (Google Keep layout) ---------- */
+
+.notes-view {
+  flex: 1;
+  min-width: 0;
+  background: var(--background);
+  color: var(--text);
+}
+
+.notes-scroll {
+  height: 100%;
+  overflow-y: auto;
+}
+
+.notes-tool-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  background: var(--glass-fill);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.notes-tool-button:hover { background: var(--glass-fill-hover); }
+.notes-tool-button:disabled { opacity: 0.6; cursor: default; }
+
+.notes-copied {
+  color: var(--muted-text);
+  font-size: 12.5px;
+}
+
+/* Actions under "Take a note…", above the notes. */
+.notes-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 600px;
+  margin: -6px auto 24px;
+}
+
+/* The + sits left of the notes, centred on the height of the note it creates. */
+.notes-area {
+  display: flex;
+  align-items: flex-start;
+  gap: 30px;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0 32px 56px;
+}
+
+.notes-plus-slot {
+  display: flex;
+  flex: none;
+  align-items: center;
+  height: var(--new-note-height);
+}
+
+/* Round + with a thin yellow ring. */
+#notes-plus-button {
+  width: 38px;
+  height: 38px;
+  border: 1.5px solid #fae25c;
+  border-radius: 50%;
+}
+
+.note[hidden] { display: none; }
+
+.notes-view { --new-note-height: 128px; }
+.notes-drawer { --new-note-height: 110px; }
+
+/* Search bar at the top, glass like the rest of the page. */
+.note-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-sizing: border-box;
+  max-width: 600px;
+  min-height: 52px;
+  margin: 28px auto 28px;
+  padding: 0 16px;
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  background: var(--glass-fill);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  color: var(--muted-text);
+  cursor: text;
+}
+
+.note-search-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: 15px/1.35 -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  outline: none;
+}
+
+.note-search-input::placeholder { color: var(--muted-text); font-weight: 500; }
+
+.notes-new-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  background: var(--glass-fill);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.notes-new-button:hover { background: var(--glass-fill-hover); }
+.notes-new-button:disabled { opacity: 0.6; cursor: default; }
+
+.notes-status {
+  max-width: 1080px;
+  margin: 0 auto 12px;
+  padding: 0 32px;
+  color: #ef4444;
+  font-size: 13px;
+}
+
+/* Masonry columns, so short and long notes pack together like Keep. */
+.notes-board {
+  flex: 1;
+  min-width: 0;
+  columns: 230px;
+  column-gap: 16px;
+}
+
+.notes-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--new-note-height);
+  margin: 0;
+  color: var(--muted-text);
+  text-align: center;
+  column-span: all;
+}
+
+/* ---------- A sticky note ---------- */
+
+.note {
+  display: flex;
+  flex-direction: column;
+  min-height: var(--new-note-height);
+  margin-bottom: 16px;
+  break-inside: avoid;
+  border: 1px solid rgba(0, 0, 0, 0.16);
+  background: var(--note-fill);
+  color: #000;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.16);
+}
+
+.note-text {
+  display: block;
+  width: 100%;
+  min-height: 90px;
+  max-height: 340px;
+  overflow-y: auto;
+  padding: 8px 10px 4px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: 15px/1.35 -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  resize: none;
+  outline: none;
+}
+
+.note-text::placeholder { color: rgba(0, 0, 0, 0.4); }
+
+.note-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 2px 6px 6px 10px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.note:hover .note-footer,
+.note:focus-within .note-footer { opacity: 1; }
+
+@media (hover: none) {
+  .note-footer { opacity: 1; }
+}
+
+.note-delete {
+  display: inline-flex;
+  padding: 4px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: rgba(0, 0, 0, 0.55);
+  cursor: pointer;
+}
+
+.note-delete:hover { background: rgba(0, 0, 0, 0.08); color: #b91c1c; }
+
+/* ---------- Yellow tape under the sun icon, and the drawer it opens ---------- */
+
+/* The tape is on every page except the Control Panel and Settings. */
+body:has(#control-panel:not([hidden])) .notes-tape,
+body:has(#control-panel:not([hidden])) .notes-drawer,
+body:has(#settings-dialog[open]) .notes-tape,
+body:has(#settings-dialog[open]) .notes-drawer { display: none; }
+
+/* A flat strip of tape sticking out from the right edge of the screen. */
+.notes-tape {
+  position: fixed;
+  top: 46px;
+  right: 0;
+  z-index: 30;
+  width: 34px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  background: rgba(250, 226, 92, 0.92);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  /* Torn end on the side facing the page. */
+  clip-path: polygon(0 10%, 8% 0, 100% 0, 100% 100%, 8% 100%, 0 90%, 6% 70%, 0 50%, 6% 30%);
+  cursor: pointer;
+  transition: width 0.15s ease, background 0.15s ease;
+}
+
+.notes-tape:hover { width: 40px; background: #fae25c; }
+.notes-tape.active { width: 40px; background: #f7d634; }
+.notes-tape:focus-visible { outline: 2px solid #38bdf8; outline-offset: 2px; }
+
+.notes-drawer {
+  position: fixed;
+  top: 70px;
+  right: 10px;
+  bottom: 10px;
+  z-index: 29;
+  display: flex;
+  flex-direction: column;
+  width: min(300px, calc(100vw - 20px));
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--sidebar);
+  color: var(--text);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+  animation: notes-drawer-in 0.18s ease-out;
+}
+
+@keyframes notes-drawer-in {
+  from { opacity: 0; transform: translateX(16px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notes-drawer { animation: none; }
+  .notes-tape { transition: none; }
+}
+
+.notes-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 10px 8px 14px;
+}
+
+.notes-drawer-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.notes-drawer-actions { display: flex; align-items: center; gap: 4px; }
+
+
+.notes-drawer .notes-status { padding: 0 14px; }
+
+.notes-drawer-board {
+  flex: 1;
+  overflow-y: auto;
+  padding: 2px 12px 12px;
+}
+
+.notes-drawer-board .note-text { max-height: 260px; }
+
+@media (max-width: 600px) {
+  .notes-area { padding-left: 16px; padding-right: 16px; }
+  .notes-actions { margin-left: 16px; margin-right: 16px; }
+  .notes-status { padding: 0 16px; }
+  .note-search { margin-left: 16px; margin-right: 16px; }
+}
+
+/* ---------- Bullet and dash buttons: clear glass circles ---------- */
+
+.notes-glyph-button {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  overflow: hidden;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  /* Nearly clear body; the rim is bright at the top and bottom, faint on the sides. */
+  background:
+    radial-gradient(circle at 50% 38%, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.015) 62%, rgba(255, 255, 255, 0.06)) padding-box,
+    linear-gradient(165deg, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.12) 38%, rgba(255, 255, 255, 0.08) 62%, rgba(255, 255, 255, 0.55)) border-box;
+  box-shadow:
+    /* A faint rainbow fringe at the edge, like light bending through glass. */
+    inset 1.5px 0 0 rgba(120, 200, 255, 0.35),
+    inset -1.5px 0 0 rgba(255, 140, 210, 0.3),
+    inset 0 -1.5px 0 rgba(255, 220, 140, 0.18),
+    /* Thick-glass depth: dark under the top edge, light along the bottom. */
+    inset 0 4px 7px rgba(0, 0, 0, 0.35),
+    inset 0 -4px 8px rgba(255, 255, 255, 0.1),
+    0 6px 16px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(10px) saturate(160%);
+  -webkit-backdrop-filter: blur(10px) saturate(160%);
+  color: #fff;
+  transition: background 0.2s ease;
+}
+
+/* The soft curved reflection across the upper half. */
+.notes-glyph-button::before {
+  content: "";
+  position: absolute;
+  top: 9%;
+  left: 14%;
+  width: 72%;
+  height: 38%;
+  border-radius: 50%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0));
+  pointer-events: none;
+}
+
+/* A thin bright arc along the bottom inside edge. */
+.notes-glyph-button::after {
+  content: "";
+  position: absolute;
+  left: 20%;
+  bottom: 7%;
+  width: 60%;
+  height: 22%;
+  border-radius: 50%;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.35);
+  pointer-events: none;
+}
+
+.notes-glyph-button svg {
+  position: relative;
+  filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.7));
+}
+
+.notes-glyph-button:hover {
+  background:
+    radial-gradient(circle at 50% 38%, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.025) 62%, rgba(255, 255, 255, 0.08)) padding-box,
+    linear-gradient(165deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.16) 38%, rgba(255, 255, 255, 0.1) 62%, rgba(255, 255, 255, 0.7)) border-box;
+}
+
+
+:root[data-theme="light"] .notes-glyph-button {
+  background:
+    radial-gradient(circle at 50% 38%, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.35) 62%, rgba(255, 255, 255, 0.6)) padding-box,
+    linear-gradient(165deg, rgba(255, 255, 255, 1), rgba(15, 23, 42, 0.1) 40%, rgba(15, 23, 42, 0.08) 60%, rgba(15, 23, 42, 0.25)) border-box;
+  box-shadow:
+    inset 1.5px 0 0 rgba(80, 160, 255, 0.3),
+    inset -1.5px 0 0 rgba(255, 120, 200, 0.25),
+    inset 0 -4px 8px rgba(255, 255, 255, 0.6),
+    0 6px 16px rgba(15, 23, 42, 0.15);
+  color: #1f2937;
+}
+
+:root[data-theme="light"] .notes-glyph-button svg { filter: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .notes-glyph-button { transition: none; }
+}

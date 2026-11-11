@@ -12,6 +12,7 @@ from src.backend.chat_memory import activity, search
 from src.backend.integrations import service
 from src.backend.integrations.prerequisites import missing_message
 from src.backend.integrations.toolbox import is_error_result, open_toolbox, read_arguments
+from src.backend.scheduled_jobs import tool as scheduled_tool
 
 logger = logging.getLogger(__name__)
 
@@ -75,12 +76,15 @@ def integration_logos(mcp_servers, api_integrations):
     return logos
 
 
-async def run_chat(messages, model, can_approve, conversation_id=None, from_telegram=False):
+async def run_chat(
+    messages, model, can_approve, conversation_id=None, from_telegram=False, approval_timeout=None
+):
     """Yields the events the chat page reads: text, tool, approval and error."""
     mcp_servers, api_integrations = await service.load_enabled_integrations()
     async with open_toolbox(mcp_servers, api_integrations) as toolbox:
         await appointment_call_tool.register(toolbox, conversation_id)
         search.register(toolbox)
+        scheduled_tool.register(toolbox)
         logos = integration_logos(mcp_servers, api_integrations)
         prompt = await system_prompt.load_for_chat()
         owner_prompt = [{"role": "system", "content": prompt}] if prompt.strip() else []
@@ -150,7 +154,7 @@ async def run_chat(messages, model, can_approve, conversation_id=None, from_tele
                         for call in needing
                     ],
                 }
-                answer = await approvals.wait(approval_id, decision)
+                answer = await approvals.wait(approval_id, decision, approval_timeout)
 
             follow_up = answer.follow_up if answer is not None else None
             for call in calls:

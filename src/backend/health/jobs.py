@@ -1,13 +1,17 @@
 """Keeps track of the app's background jobs, so a stopped or failing job raises an alarm."""
 
+from datetime import datetime, timezone
+
 JOB_NAMES = {
     "task_scan": "Email To Do scan",
     "call_results": "Phone call results",
     "search_embeddings": "Meaning search",
+    "scheduled_tasks": "Scheduled tasks",
 }
 
 tasks = {}
 last_errors = {}
+last_runs = {}
 
 
 def watch(job, task):
@@ -17,10 +21,12 @@ def watch(job, task):
 
 def succeeded(job):
     last_errors.pop(job, None)
+    last_runs[job] = datetime.now(timezone.utc)
 
 
 def failed(job, problem):
     last_errors[job] = problem
+    last_runs[job] = datetime.now(timezone.utc)
 
 
 def problems():

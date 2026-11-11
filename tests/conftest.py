@@ -43,3 +43,12 @@ def running_app(tmp_path_factory):
     finally:
         process.terminate()
         process.wait(timeout=10)
+
+
+@pytest.fixture(autouse=True)
+def no_real_phone_call_settings(monkeypatch):
+    """Phone calls stay off in tests unless a test turns them on, whatever the owner's .env says."""
+    from src.backend import config
+
+    for name in ("ELEVENLABS_API_KEY", "ELEVENLABS_AGENT_ID", "ELEVENLABS_PHONE_NUMBER_ID", "CALL_OWNER_NAME"):
+        monkeypatch.setattr(config, name, "")

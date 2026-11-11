@@ -13,6 +13,18 @@
   padding: 0 10px;
 }
 
+/* Pinned top right on every page, in the spot they had in the chat's top bar.
+   Hidden on the Control Panel and Settings, like the notes tape. */
+.topbar-actions {
+  position: fixed;
+  top: 7px;
+  right: 10px;
+  z-index: 31;
+}
+
+body:has(#control-panel:not([hidden])) .topbar-actions,
+body:has(#settings-dialog[open]) .topbar-actions { display: none; }
+
 .theme-toggle-button {
   color: var(--text);
 }
@@ -201,10 +213,13 @@
   cursor: pointer;
 }
 
+/* Same blue gradient as the Control Panel button. */
 .primary-button {
-  background: var(--send-button);
+  background: linear-gradient(135deg, #1e3a8a, #2563eb 45%, #0284c7 75%, #0ea5e9);
   color: var(--send-button-icon);
 }
+
+.primary-button:not(:disabled):hover { filter: brightness(1.08); }
 
 .primary-button:disabled { opacity: 0.4; cursor: not-allowed; }
 

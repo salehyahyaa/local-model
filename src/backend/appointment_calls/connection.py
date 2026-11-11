@@ -1,29 +1,28 @@
-"""The phone-call integration the owner adds from the + menu."""
+"""Phone call settings. They come from the config, so the owner only has to ask the model to make a call."""
 
 import asyncio
 import logging
 
-import asyncpg
 import httpx
 
-from src.backend.appointment_calls import client, store
-from src.backend.integrations import env_secrets, service
-from src.backend.integrations.errors import DuplicateNameError
+from src.backend import config
+from src.backend.appointment_calls import client
+from src.backend.integrations import service
 
 logger = logging.getLogger(__name__)
 
 NAME = "Phone calls"
-API_KEY_SECRET = env_secrets.secret_name(NAME, "API_KEY")
+SETTINGS_ID = 1
 WRONG_MODEL_MESSAGE = (
-    "This agent can't be used: it must run on your own model. In ElevenLabs, set its LLM to Custom LLM, "
-    "and don't set a custom backup LLM list."
+    "This agent can't be used: in ElevenLabs, set its LLM to DeepSeek Flash 4.1 with Backup LLM disabled, "
+    "or to Custom LLM without a custom backup list."
 )
 HTTP_NOT_FOUND = 404
 PHONE_NUMBER_NOT_FOUND_MESSAGE = "ElevenLabs couldn't find that phone number ID."
 
 
 class AgentNotAllowed(Exception):
-    """The agent could use a model other than the owner's."""
+    """The agent could use a model other than the approved ones."""
 
 
 class PhoneNumberNotFound(Exception):
@@ -31,7 +30,21 @@ class PhoneNumberNotFound(Exception):
 
 
 def get_api_key():
-    return env_secrets.get_secret(API_KEY_SECRET)
+    return config.ELEVENLABS_API_KEY
+
+
+async def load_connection():
+    """None until the agent, phone number, owner name and API key are all set in the config."""
+    settings = {
+        "id": SETTINGS_ID,
+        "owner_name": config.CALL_OWNER_NAME,
+        "agent_id": config.ELEVENLABS_AGENT_ID,
+        "phone_number_id": config.ELEVENLABS_PHONE_NUMBER_ID,
+        "enabled": True,
+    }
+    if not all(settings.values()) or not get_api_key():
+        return None
+    return settings
 
 
 async def check_agent(api_key, agent_id):
@@ -49,59 +62,10 @@ async def check_phone_number(api_key, phone_number_id):
         raise
 
 
-async def connect(connection):
-    """Checks the key, agent and phone number first, so a mistake shows up here and not later in a chat."""
-    await check_agent(connection["api_key"], connection["agent_id"])
-    await check_phone_number(connection["api_key"], connection["phone_number_id"])
-
-    async def create_record():
-        try:
-            return await store.create_connection(connection)
-        except asyncpg.UniqueViolationError as error:
-            raise DuplicateNameError(NAME) from error
-
-    created = await service.save_with_secrets(NAME, {API_KEY_SECRET: connection["api_key"]}, create_record)
-    logger.info("Connected phone calls")
-    return to_public(created)
-
-
-async def remove(connection_id):
-    if not await store.delete_connection(connection_id):
-        return False
-    env_secrets.remove_secret(API_KEY_SECRET)
-    logger.info("Removed phone calls")
-    return True
-
-
-def to_public(connection):
-    return {
-        "id": connection["id"],
-        "kind": "phone",
-        "provider": "phone-calls",
-        "name": NAME,
-        "target": connection["owner_name"],
-        "enabled": connection["enabled"],
-    }
-
-
-async def read_connections():
-    connection = await store.get_connection()
-    return [connection] if connection else []
-
-
-async def load_connection():
-    """None when not connected, or when the database or its table isn't available."""
-    connections = await service.load_enabled(read_connections, "phone_call_connections")
-    return connections[0] if connections else None
-
-
 async def check_saved_connection(settings):
-    api_key = get_api_key()
-    if not api_key:
-        raise AgentNotAllowed("The ElevenLabs key is missing.")
     try:
-        await check_agent(api_key, settings["agent_id"])
-        await check_phone_number(api_key, settings["phone_number_id"])
+        await check_agent(get_api_key(), settings["agent_id"])
+        await check_phone_number(get_api_key(), settings["phone_number_id"])
     except httpx.HTTPStatusError as error:
         status = error.response.status_code
         if status in (401, 403):
@@ -113,7 +77,7 @@ async def check_saved_connection(settings):
 
 async def check_health():
     settings = await load_connection()
-    if settings is None or not settings["enabled"]:
+    if settings is None:
         return []
     try:
         await asyncio.wait_for(check_saved_connection(settings), service.HEALTH_CHECK_TIMEOUT)
@@ -122,8 +86,3 @@ async def check_health():
     except (httpx.HTTPError, ValueError, asyncio.TimeoutError):
         return [{"kind": "phone", "id": settings["id"], "problem": "Couldn't reach ElevenLabs."}]
     return [{"kind": "phone", "id": settings["id"], "problem": None}]
-
-
-async def list_public():
-    connection = await load_connection()
-    return [to_public(connection)] if connection else []

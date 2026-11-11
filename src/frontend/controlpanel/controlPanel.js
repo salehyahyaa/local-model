@@ -198,6 +198,7 @@ export function openControlPanel() {
 }
 
 function openPanel() {
+  document.dispatchEvent(new CustomEvent("main-view-opened", { detail: "control-panel" }));
   chatView.hidden = true;
   panel.hidden = false;
   openButton.classList.add("active");
@@ -224,6 +225,9 @@ export function setupControlPanel() {
   openButton.addEventListener("click", () => (panel.hidden ? openPanel() : closePanel()));
   document.getElementById("sidebar").addEventListener("click", (event) => {
     if (!panel.hidden && event.target.closest(".chat-title-button, #new-chat-button")) closePanel();
+  });
+  document.addEventListener("main-view-opened", (event) => {
+    if (event.detail !== "control-panel" && !panel.hidden) closePanel();
   });
   if (location.hash === PAGE_ADDRESS) openPanel();
 }

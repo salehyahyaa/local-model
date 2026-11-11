@@ -308,7 +308,3 @@
 .save-button { background: var(--send-button); color: #ffffff; }
 .save-button:disabled { opacity: 0.5; cursor: not-allowed; }
 
-#add-phone-calls-button {
-  width: 100%;
-  margin-top: 4px;
-}

@@ -1,0 +1,19 @@
+<button id="notes-tape" class="notes-tape" type="button" title="Sticky notes" aria-label="Open sticky notes" aria-expanded="false" aria-controls="notes-drawer">
+</button>
+
+<aside id="notes-drawer" class="notes-drawer" aria-label="Sticky notes" hidden>
+  <header class="notes-drawer-header">
+    <h2 class="notes-drawer-title">Notes</h2>
+    <div class="notes-drawer-actions">
+      <button id="drawer-new-note-button" class="notes-new-button" type="button" title="New sticky note">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <span>New</span>
+      </button>
+      <button id="notes-drawer-close" class="icon-button" type="button" title="Close" aria-label="Close sticky notes">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+      </button>
+    </div>
+  </header>
+  <p id="notes-drawer-status" class="notes-status" role="status" hidden></p>
+  <div id="notes-drawer-board" class="notes-drawer-board"></div>
+</aside>

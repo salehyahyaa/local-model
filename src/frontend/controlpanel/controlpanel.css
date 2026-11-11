@@ -51,10 +51,11 @@
   padding: 8px 32px 56px;
 }
 
-/* Laid out like the chat's top bar, with its icons at the top left. */
+/* Laid out like the chat's top bar, with its icons at the top right. */
 .cp-topbar {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   height: 42px;
   padding: 0 10px;
 }
@@ -350,7 +351,11 @@
 }
 
 
-.cp-analytics-button { color: var(--text); }
+.cp-analytics-button {
+  color: var(--text);
+  background: var(--glass-fill);
+  border: 1px solid var(--glass-border, transparent);
+}
 
 .cp-analytics-button:hover { background: var(--glass-fill-hover); }
 .cp-analytics-button:focus-visible { outline: 2px solid var(--cp-accent); outline-offset: 2px; }

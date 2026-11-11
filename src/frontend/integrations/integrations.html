@@ -22,10 +22,6 @@
     <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><line x1="16" y1="3" x2="16" y2="7"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="3" y1="11" x2="21" y2="11"/></svg>
     <span>Add Google Calendar</span>
   </button>
-  <button id="add-phone-calls-button" class="context-menu-item" type="button">
-    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16.5v3a2 2 0 0 1-2.2 2A18 18 0 0 1 2.5 5.2 2 2 0 0 1 4.5 3h3a2 2 0 0 1 2 1.7l.4 2.6a2 2 0 0 1-.6 1.8L8 10.4a15 15 0 0 0 5.6 5.6l1.3-1.3a2 2 0 0 1 1.8-.6l2.6.4a2 2 0 0 1 1.7 2Z"/></svg>
-    <span>Add phone calls</span>
-  </button>
 </div>
 
 <dialog id="integration-dialog" class="integration-dialog">
@@ -228,37 +224,3 @@
   </form>
 </dialog>
 
-<dialog id="phone-calls-dialog" class="integration-dialog">
-  <form id="phone-calls-form" class="integration-form">
-    <h2>Add phone calls</h2>
-
-    <label class="field">
-      <span>Your name</span>
-      <input name="ownerName" type="text" maxlength="100" autocomplete="name" required />
-      <small>The agent says it's calling on behalf of this name.</small>
-    </label>
-    <label class="field">
-      <span>ElevenLabs API key</span>
-      <input name="apiKey" type="password" autocomplete="off" required />
-    </label>
-    <label class="field">
-      <span>ElevenLabs agent ID</span>
-      <input name="agentId" type="text" autocomplete="off" required />
-      <small>The agent must be set to Custom LLM, so calls run on your own model.</small>
-    </label>
-    <label class="field">
-      <span>Phone number ID</span>
-      <input name="phoneNumberId" type="text" autocomplete="off" required />
-      <small>The ID ElevenLabs shows after you import your Twilio number.</small>
-    </label>
-
-    <small class="integration-secrets-note">The API key is saved to your system keychain, never to the database or .env.</small>
-
-    <p id="phone-calls-form-error" class="form-error" hidden></p>
-
-    <div class="dialog-actions">
-      <button id="phone-calls-cancel-button" class="secondary-button" type="button">Cancel</button>
-      <button id="phone-calls-connect-button" class="save-button" type="submit">Connect</button>
-    </div>
-  </form>
-</dialog>

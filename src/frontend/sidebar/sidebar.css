@@ -28,9 +28,20 @@
 .sidebar.collapsed #notes-button { order: 3; }
 .sidebar.collapsed #scheduled-button { order: 3; }
 .sidebar.collapsed #agentic-purchases-button { order: 3; }
+.sidebar.collapsed #cyber-button { order: 3; }
 .sidebar.collapsed #search-button { order: 4; }
 .sidebar.collapsed #settings-button { order: 5; }
 .sidebar.collapsed #control-panel-button { order: 6; }
+
+.red-dot {
+  display: inline-block;
+  vertical-align: middle;
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #e5484d;
+}
 
 .archive-button { margin-top: 4px; }
 .archive-button.active,

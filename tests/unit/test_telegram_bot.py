@@ -594,6 +594,7 @@ class FakeConversations:
         self.questions = []
         self.replies = []
         self.ended = []
+        self.errors = []
 
     def check(self):
         if self.broken:
@@ -615,6 +616,10 @@ class FakeConversations:
     async def load_history(self, telegram_user_id, limit):
         self.check()
         return self.history
+
+    async def save_error(self, kind, message, attempted, conversation_id=None):
+        self.check()
+        self.errors.append((kind, message, conversation_id))
 
 
 def make_saving_bot(chat_handler, conversations):
@@ -703,3 +708,34 @@ def test_only_answered_questions_are_sent_to_the_model_later():
         {"role": "user", "content": "failed too"},
     ]
     assert answered_messages(messages) == messages[1:3]
+
+
+# Errors saved for the model to learn from
+
+
+def test_failed_reply_is_saved_for_learning():
+    saved = FakeConversations()
+    bot = make_saving_bot(no_model, saved)
+    asyncio.run(bot.handle_update(update()))
+    assert saved.errors == [("HTTP 503", "No model is connected.", 5)]
+
+
+def test_unreachable_app_is_saved_with_the_real_cause():
+    def handler(request):
+        raise httpx.ConnectError("refused")
+
+    saved = FakeConversations()
+    bot = make_saving_bot(handler, saved)
+    asyncio.run(bot.handle_update(update()))
+    assert saved.errors == [("ConnectError", APP_NOT_RUNNING, 5)]
+
+
+def test_errors_the_app_reported_are_not_saved_twice():
+    def handler(request):
+        return httpx.Response(200, text=stream_body({"type": "error", "message": "out of memory"}))
+
+    saved = FakeConversations()
+    bot = make_saving_bot(handler, saved)
+    asyncio.run(bot.handle_update(update()))
+    assert saved.errors == []
+

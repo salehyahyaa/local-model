@@ -20,6 +20,8 @@ const page = {
 };
 const bulletButton = document.getElementById("notes-bullet-button");
 const dashButton = document.getElementById("notes-dash-button");
+const boldButton = document.getElementById("notes-bold-button");
+const italicButton = document.getElementById("notes-italic-button");
 const copiedNotice = document.getElementById("notes-copied");
 const BULLET = "•";
 const DASH = "–";
@@ -33,6 +35,8 @@ const side = {
 };
 
 const pendingSaves = new Map();
+/** Notes made with no text that nobody has typed in yet; they're deleted once left with no characters. */
+const blankNewNotes = new Map();
 
 function showStatus(surface, text) {
   surface.status.textContent = text ?? "";
@@ -46,14 +50,39 @@ function createElement(tag, className, text) {
   return element;
 }
 
-/** Grows a note to fit its words; past the max height set in CSS it scrolls instead. */
-function fitHeight(textarea) {
-  textarea.style.height = "auto";
-  textarea.style.height = `${textarea.scrollHeight}px`;
+/** Notes keep only bold, italic and line breaks; everything else is reduced to its words. */
+const KEPT_TAGS = { B: "b", STRONG: "b", I: "i", EM: "i", BR: "br", DIV: "div", P: "div" };
+
+function cleanNodes(source, target) {
+  for (const node of source.childNodes) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      target.append(node.textContent);
+    } else if (node.nodeType === Node.ELEMENT_NODE) {
+      const tag = KEPT_TAGS[node.tagName];
+      if (!tag) {
+        cleanNodes(node, target);
+        continue;
+      }
+      const copy = document.createElement(tag);
+      if (tag !== "br") cleanNodes(node, copy);
+      target.append(copy);
+    }
+  }
 }
 
-function fitAll(surface) {
-  surface.board.querySelectorAll(".note-text").forEach(fitHeight);
+/** Parses saved HTML without running it, then keeps only the allowed formatting. */
+function cleanHtml(html) {
+  const parsed = new DOMParser().parseFromString(html ?? "", "text/html");
+  const out = document.createElement("div");
+  cleanNodes(parsed.body, out);
+  return out.textContent.trim() ? out.innerHTML : "";
+}
+
+function applyFormat(command) {
+  const editor = document.activeElement;
+  if (!editor?.classList?.contains("note-text")) return;
+  document.execCommand(command);
+  editor.dispatchEvent(new Event("input"));
 }
 
 function saveSoon(surface, noteId, changes) {
@@ -80,18 +109,44 @@ function flushAllSaves() {
   return Promise.all([...pendingSaves.keys()].map(flushSave));
 }
 
+function discardIfBlank(noteId) {
+  const entry = blankNewNotes.get(noteId);
+  if (!entry) return;
+  blankNewNotes.delete(noteId);
+  if (entry.card.querySelector(".note-text").textContent.length === 0) {
+    return removeNote(entry.surface, noteId, entry.card);
+  }
+}
+
+function discardAllBlank() {
+  return Promise.all([...blankNewNotes.keys()].map(discardIfBlank));
+}
+
 function renderNote(surface, note) {
   const card = createElement("article", `note note-${note.color}`);
 
-  const text = createElement("textarea", "note-text");
-  text.value = note.text;
-  text.placeholder = "Write something…";
+  const text = createElement("div", "note-text");
+  text.contentEditable = "true";
+  text.innerHTML = cleanHtml(note.text);
+  text.dataset.placeholder = "Write something…";
+  text.setAttribute("role", "textbox");
+  text.setAttribute("aria-multiline", "true");
   text.setAttribute("aria-label", "Note");
   text.addEventListener("input", () => {
-    fitHeight(text);
-    saveSoon(surface, note.id, { text: text.value });
+    // Deleting everything leaves a stray <br>; clear it so the placeholder shows again.
+    if (text.innerHTML === "<br>") text.replaceChildren();
+    if (text.textContent.length > 0) blankNewNotes.delete(note.id);
+    saveSoon(surface, note.id, { text: cleanHtml(text.innerHTML) });
   });
-  text.addEventListener("blur", () => flushSave(note.id));
+  /** Pasted text comes in plain, so outside styles don't end up in notes. */
+  text.addEventListener("paste", (event) => {
+    event.preventDefault();
+    document.execCommand("insertText", false, event.clipboardData.getData("text/plain"));
+  });
+  text.addEventListener("blur", () => {
+    discardIfBlank(note.id);
+    flushSave(note.id);
+  });
 
   const footer = createElement("div", "note-footer");
   const remove = createElement("button", "note-delete");
@@ -115,6 +170,7 @@ function showEmptyIfNeeded(surface) {
 async function removeNote(surface, noteId, card) {
   clearTimeout(pendingSaves.get(noteId)?.timer);
   pendingSaves.delete(noteId);
+  blankNewNotes.delete(noteId);
   try {
     await api.deleteNote(noteId);
     card.remove();
@@ -135,9 +191,10 @@ async function addNote(surface, text = "") {
     const card = renderNote(surface, note);
     surface.board.prepend(card);
     surface.board.scrollTop = 0;
-    const textarea = card.querySelector(".note-text");
-    fitHeight(textarea);
-    if (!text) textarea.focus();
+    if (!text) {
+      blankNewNotes.set(note.id, { surface, card });
+      card.querySelector(".note-text").focus();
+    }
     if (surface === page) alignPlus();
     showStatus(surface, "");
     return true;
@@ -170,7 +227,7 @@ function filterNotes() {
   page.board.querySelector(".notes-no-match")?.remove();
   const cards = [...page.board.querySelectorAll(".note")];
   for (const card of cards) {
-    const text = card.querySelector(".note-text").value.toLowerCase();
+    const text = card.querySelector(".note-text").textContent.toLowerCase();
     card.hidden = Boolean(searchText) && !text.includes(searchText);
   }
   if (searchText && cards.length && cards.every((card) => card.hidden)) {
@@ -181,12 +238,12 @@ function filterNotes() {
 
 /** Waits for unsaved typing first, so reopening always shows the latest words. */
 async function refreshNotes(surface) {
+  await discardAllBlank();
   await flushAllSaves();
   try {
     const { notes } = await api.loadNotes();
     surface.board.replaceChildren(...notes.map((note) => renderNote(surface, note)));
     showEmptyIfNeeded(surface);
-    fitAll(surface);
     if (surface === page) filterNotes();
     showStatus(surface, "");
   } catch (error) {
@@ -206,6 +263,7 @@ function openNotes() {
 }
 
 function closeNotes() {
+  discardAllBlank();
   flushAllSaves();
   view.hidden = true;
   chatView.hidden = false;
@@ -223,6 +281,7 @@ function openDrawer() {
 
 function closeDrawer() {
   if (drawer.hidden) return;
+  discardAllBlank();
   flushAllSaves();
   drawer.hidden = true;
   tape.classList.remove("active");
@@ -249,6 +308,12 @@ export function setupNotes() {
   searchInput.addEventListener("input", filterNotes);
   bulletButton.addEventListener("click", () => copyMark(BULLET, "Bullet"));
   dashButton.addEventListener("click", () => copyMark(DASH, "Dash"));
+  // mousedown would move focus off the note before the click, losing the selection.
+  for (const button of [boldButton, italicButton]) {
+    button.addEventListener("mousedown", (event) => event.preventDefault());
+  }
+  boldButton.addEventListener("click", () => applyFormat("bold"));
+  italicButton.addEventListener("click", () => applyFormat("italic"));
 
   tape.addEventListener("click", () => (drawer.hidden ? openDrawer() : closeDrawer()));
   side.newButton.addEventListener("click", () => addNote(side));
@@ -268,6 +333,9 @@ export function setupNotes() {
     closeDrawer();
     if (!view.hidden) closeNotes();
   });
-  window.addEventListener("pagehide", flushAllSaves);
+  window.addEventListener("pagehide", () => {
+    discardAllBlank();
+    flushAllSaves();
+  });
   if (location.hash === PAGE_ADDRESS) openNotes();
 }

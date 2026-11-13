@@ -7,10 +7,20 @@ UNREADABLE_REPLY = "The app sent a reply that couldn't be read."
 EMPTY_REPLY = "The model sent an empty reply."
 CONNECT_TIMEOUT = 5
 HTTP_NOT_FOUND = 404
+# The app saves the errors it reports itself, so these are not saved again.
+APP_REPORTED = "AppReported"
 
 
 class ChatError(Exception):
-    """Its text is meant to be shown to the owner."""
+    """Its text is meant to be shown to the owner. Its kind says what really went wrong, for the error log."""
+
+    def __init__(self, message, kind):
+        super().__init__(message)
+        self.kind = kind
+
+
+def http_error_kind(response):
+    return f"HTTP {response.status_code}"
 
 
 class ChatClient:
@@ -33,12 +43,12 @@ class ChatClient:
             async with self.client.stream("POST", "/api/chat", json=body) as response:
                 if response.is_error:
                     await response.aread()
-                    raise ChatError(read_error(response))
+                    raise ChatError(read_error(response), http_error_kind(response))
                 return await read_reply(response, on_approval)
-        except (httpx.ConnectError, httpx.ConnectTimeout):
-            raise ChatError(APP_NOT_RUNNING) from None
-        except httpx.HTTPError:
-            raise ChatError(APP_STOPPED_RESPONDING) from None
+        except (httpx.ConnectError, httpx.ConnectTimeout) as error:
+            raise ChatError(APP_NOT_RUNNING, type(error).__name__) from error
+        except httpx.HTTPError as error:
+            raise ChatError(APP_STOPPED_RESPONDING, type(error).__name__) from error
 
     async def answer_approval(self, approval_id, approved):
         return await self.post_answer(approval_id, {"approved": approved})
@@ -51,14 +61,14 @@ class ChatClient:
         """Returns False when the request is no longer waiting, such as after it timed out."""
         try:
             response = await self.client.post(f"/api/chat/approvals/{approval_id}", json=answer)
-        except (httpx.ConnectError, httpx.ConnectTimeout):
-            raise ChatError(APP_NOT_RUNNING) from None
-        except httpx.HTTPError:
-            raise ChatError(APP_STOPPED_RESPONDING) from None
+        except (httpx.ConnectError, httpx.ConnectTimeout) as error:
+            raise ChatError(APP_NOT_RUNNING, type(error).__name__) from error
+        except httpx.HTTPError as error:
+            raise ChatError(APP_STOPPED_RESPONDING, type(error).__name__) from error
         if response.status_code == HTTP_NOT_FOUND:
             return False
         if response.is_error:
-            raise ChatError(read_error(response))
+            raise ChatError(read_error(response), http_error_kind(response))
         return True
 
     async def close(self):
@@ -87,11 +97,11 @@ async def read_reply(response, on_approval=None):
                 errors.append(event["message"])
             is_approval = event.get("type") == "approval"
         except (ValueError, AttributeError, KeyError, TypeError):
-            raise ChatError(UNREADABLE_REPLY) from None
+            raise ChatError(UNREADABLE_REPLY, "UnreadableReply") from None
         if is_approval and on_approval is not None:
             await on_approval(event)
     if errors:
-        raise ChatError("\n".join([text, *(f"[Error: {error}]" for error in errors)]).strip())
+        raise ChatError("\n".join([text, *(f"[Error: {error}]" for error in errors)]).strip(), APP_REPORTED)
     if not text.strip():
-        raise ChatError(EMPTY_REPLY)
+        raise ChatError(EMPTY_REPLY, "EmptyReply")
     return text

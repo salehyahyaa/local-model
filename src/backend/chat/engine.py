@@ -8,7 +8,7 @@ from src.backend.appointment_calls import connection as appointment_call_connect
 from src.backend.appointment_calls import tool as appointment_call_tool
 from src.backend.chat import approvals, system_prompt
 from src.backend.chat.model_slot import ModelError
-from src.backend.chat_memory import activity, search
+from src.backend.chat_memory import activity, errors, search
 from src.backend.integrations import service
 from src.backend.integrations.prerequisites import missing_message
 from src.backend.integrations.toolbox import is_error_result, open_toolbox, read_arguments
@@ -100,6 +100,9 @@ async def run_chat(
 
         async def remember(call, arguments, outcome, result):
             label = toolbox.label_for(call["name"])
+            logger.info(
+                "Model called %s with %s: %s", call["name"], json.dumps(arguments, ensure_ascii=False), outcome
+            )
             # Searching memory isn't something the owner asked to be remembered, and would only clutter it.
             if label == search.LABEL:
                 return
@@ -121,6 +124,9 @@ async def run_chat(
                         calls.append(event)
             except ModelError as error:
                 logger.warning("The model failed: %s", error)
+                await errors.record(
+                    errors.CHAT, type(error).__name__, str(error), "writing a reply", conversation_id
+                )
                 yield {"type": "error", "message": str(error)}
                 return
 
@@ -188,4 +194,5 @@ async def run_chat(
             if follow_up is not None:
                 conversation.append({"role": "user", "content": follow_up})
 
+        await errors.record(errors.CHAT, "TooManyToolRounds", TOO_MANY_ROUNDS, "writing a reply", conversation_id)
         yield {"type": "error", "message": TOO_MANY_ROUNDS}

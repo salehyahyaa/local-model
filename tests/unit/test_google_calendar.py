@@ -52,7 +52,7 @@ def test_only_reading_the_calendar_skips_approval():
 def test_listing_expands_repeats_and_keeps_only_useful_fields():
     seen = []
     response = httpx.Response(200, json={"items": [EVENT]})
-    events = api.list_events("tok", limit=500, transport=recording_transport(seen, response))
+    events = api.list_events("tok", limit=99999, transport=recording_transport(seen, response))
     assert seen[0].headers["authorization"] == "Bearer tok"
     assert seen[0].url.params["singleEvents"] == "true"
     assert seen[0].url.params["maxResults"] == str(api.MAX_LIMIT)
@@ -60,6 +60,94 @@ def test_listing_expands_repeats_and_keeps_only_useful_fields():
     assert events[0]["id"] == "e1"
     assert events[0]["has_guests"] is True
     assert "etag" not in events[0]
+
+
+def test_listing_sends_only_the_bounds_asked_for():
+    seen = []
+    api.list_events("tok", time_max="2026-11-01T00:00:00-06:00", transport=recording_transport(seen))
+    assert "timeMin" not in seen[0].url.params
+    assert seen[0].url.params["timeMax"] == "2026-11-01T00:00:00-06:00"
+
+
+def test_searching_by_name_with_no_dates_covers_the_whole_calendar():
+    seen = []
+    api.list_events("tok", query="d40qw", transport=recording_transport(seen))
+    assert seen[0].url.params["q"] == "d40qw"
+    assert "timeMin" not in seen[0].url.params
+    assert "timeMax" not in seen[0].url.params
+
+
+def test_listing_with_no_bounds_shows_the_coming_week():
+    seen = []
+    api.list_events("tok", transport=recording_transport(seen))
+    assert "timeMin" in seen[0].url.params and "timeMax" in seen[0].url.params
+
+
+def pages_transport(seen, pages):
+    """Answers each request with the next page in order."""
+
+    def handler(request):
+        seen.append(request)
+        return httpx.Response(200, json=pages[len(seen) - 1])
+
+    return httpx.MockTransport(handler)
+
+
+def test_a_name_search_with_too_narrow_dates_searches_the_whole_calendar():
+    seen = []
+    pages = [{"items": []}, {"items": [{**EVENT, "summary": "d40qw"}]}]
+    events = api.list_events(
+        "tok", "2026-11-12T00:00:00-06:00", "2026-11-30T23:59:59-06:00", "d40qw", transport=pages_transport(seen, pages)
+    )
+    assert len(seen) == 2
+    assert seen[0].url.params["timeMax"] == "2026-11-30T23:59:59-06:00"
+    assert seen[1].url.params["q"] == "d40qw"
+    assert "timeMin" not in seen[1].url.params
+    assert "timeMax" not in seen[1].url.params
+    assert events[0]["summary"] == "d40qw"
+
+
+def test_a_name_search_that_finds_events_in_its_dates_asks_once():
+    seen = []
+    pages = [{"items": [EVENT]}]
+    api.list_events("tok", "2026-11-12T00:00:00-06:00", None, "Lunch", transport=pages_transport(seen, pages))
+    assert len(seen) == 1
+
+
+def test_a_date_range_with_no_name_is_not_widened():
+    seen = []
+    transport = pages_transport(seen, [{"items": []}])
+    events = api.list_events("tok", "2026-11-01T00:00:00-06:00", "2026-11-02T00:00:00-06:00", transport=transport)
+    assert len(seen) == 1
+    assert events == []
+
+
+def test_a_whole_calendar_search_with_nothing_found_asks_once():
+    seen = []
+    events = api.list_events("tok", query="nothing", transport=pages_transport(seen, [{"items": []}]))
+    assert len(seen) == 1
+    assert events == []
+
+
+def test_searching_follows_every_page_up_to_the_limit():
+    seen = []
+    pages = [
+        {"items": [{**EVENT, "id": "a"}], "nextPageToken": "p2"},
+        {"items": [{**EVENT, "id": "b"}], "nextPageToken": "p3"},
+        {"items": [{**EVENT, "id": "c"}]},
+    ]
+    events = api.list_events("tok", query="d40qw", transport=pages_transport(seen, pages))
+    assert [event["id"] for event in events] == ["a", "b", "c"]
+    assert seen[1].url.params["pageToken"] == "p2"
+    assert seen[2].url.params["pageToken"] == "p3"
+
+
+def test_searching_stops_at_the_limit():
+    seen = []
+    pages = [{"items": [{**EVENT, "id": "a"}, {**EVENT, "id": "b"}], "nextPageToken": "p2"}]
+    events = api.list_events("tok", query="d40qw", limit=2, transport=pages_transport(seen, pages))
+    assert len(seen) == 1
+    assert len(events) == 2
 
 
 def test_creating_sends_the_event():

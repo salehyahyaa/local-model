@@ -11,7 +11,7 @@ EVENTS_PATH = "https://www.googleapis.com/calendar/v3/calendars/primary/events"
 TIMEOUT = 20
 DEFAULT_DAYS_AHEAD = 7
 DEFAULT_LIMIT = 25
-MAX_LIMIT = 100
+MAX_LIMIT = 2500
 EVENTS_TO_CHECK_FOR_ACCOUNT = 250
 DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 EXPIRED_MESSAGE = "The Google sign-in is no longer valid. Remove Google Calendar and connect it again."
@@ -112,19 +112,44 @@ def read_limit(value):
     return max(1, min(limit, MAX_LIMIT))
 
 
+def fetch_events(token, params, limit, transport=None):
+    """Follows Google's pages until the limit is reached, so a long range isn't cut off at one page."""
+    events = []
+    page_token = None
+    while len(events) < limit:
+        page = {**params, "maxResults": min(limit - len(events), MAX_LIMIT)}
+        if page_token:
+            page["pageToken"] = page_token
+        found = call(token, "GET", EVENTS_PATH, params=page, transport=transport)
+        events.extend(found.get("items", []))
+        page_token = found.get("nextPageToken")
+        if not page_token:
+            break
+    return [to_public(event) for event in events[:limit]]
+
+
 def list_events(token, time_min=None, time_max=None, query=None, limit=DEFAULT_LIMIT, transport=None):
-    now = datetime.now(timezone.utc)
-    params = {
-        "singleEvents": "true",
-        "orderBy": "startTime",
-        "timeMin": time_min or now.isoformat(),
-        "timeMax": time_max or (now + timedelta(days=DEFAULT_DAYS_AHEAD)).isoformat(),
-        "maxResults": read_limit(limit),
-    }
+    limit = read_limit(limit)
+    params = {"singleEvents": "true", "orderBy": "startTime"}
     if query:
         params["q"] = str(query)
-    found = call(token, "GET", EVENTS_PATH, params=params, transport=transport)
-    return [to_public(event) for event in found.get("items", [])]
+    if not (time_min or time_max or query):
+        now = datetime.now(timezone.utc)
+        params["timeMin"] = now.isoformat()
+        params["timeMax"] = (now + timedelta(days=DEFAULT_DAYS_AHEAD)).isoformat()
+        return fetch_events(token, params, limit, transport)
+
+    # Only the bounds asked for, so any range works: past, future, or open-ended.
+    ranged = dict(params)
+    if time_min:
+        ranged["timeMin"] = time_min
+    if time_max:
+        ranged["timeMax"] = time_max
+    events = fetch_events(token, ranged, limit, transport)
+    if events or not query or ranged == params:
+        return events
+    # A search by name always reaches the whole calendar, even when the dates given were too narrow.
+    return fetch_events(token, params, limit, transport)
 
 
 def find_account(token, transport=None):

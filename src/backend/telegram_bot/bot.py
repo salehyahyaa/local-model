@@ -8,7 +8,7 @@ import html
 import json
 import logging
 
-from src.backend.telegram_bot.chat_client import ChatError
+from src.backend.telegram_bot.chat_client import APP_REPORTED, ChatError
 from src.backend.telegram_bot.telegram_api import TelegramError
 
 logger = logging.getLogger(__name__)
@@ -149,7 +149,8 @@ class Bot:
         self.waiting_approvals.discard(approval_id)
         try:
             delivered = await self.chat_client.send_follow_up(approval_id, message["text"])
-        except ChatError:
+        except ChatError as error:
+            await self.record_error(error, "sending the owner's message to a request waiting for approval")
             return False
         if delivered:
             self.follow_ups.append({"role": "user", "content": message["text"]})
@@ -182,6 +183,7 @@ class Bot:
         try:
             answered = await self.chat_client.answer_approval(approval_id, approved)
         except ChatError as error:
+            await self.record_error(error, "answering an approval")
             await self.telegram.answer_button(callback["id"], str(error))
             return
         self.waiting_approvals.discard(approval_id)
@@ -241,6 +243,13 @@ class Bot:
             logger.error("Could not use the saved Telegram conversations: %s", type(error).__name__)
             return None
 
+    async def record_error(self, error, attempted, conversation_id=None):
+        """Kept for the model to learn from. Errors the app reported are already saved by the app."""
+        if error.kind == APP_REPORTED:
+            return
+        logger.warning("Chat failed while %s: %s", attempted, error.kind)
+        await self.save(lambda log: log.save_error(error.kind, str(error), attempted, conversation_id))
+
     async def restore_history(self):
         if self.history_restored:
             return
@@ -269,6 +278,7 @@ class Bot:
             )
         except ChatError as error:
             # Failed exchanges stay out of the history, so the model never sees them later.
+            await self.record_error(error, "answering a Telegram message", conversation_id)
             await self.send(chat_id, str(error))
             return
         finally:

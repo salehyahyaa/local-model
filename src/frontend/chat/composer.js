@@ -8,6 +8,20 @@ const composer = document.getElementById("composer");
 const messageInput = document.getElementById("message-input");
 const sendButton = document.getElementById("send-button");
 
+/** Unsent text per chat, so a draft stays in the chat it was typed in. */
+const drafts = new Map();
+let draftChatId = null;
+
+function switchDraft() {
+  const chatId = chatStore.getActiveChatId();
+  if (chatId === draftChatId) return;
+  if (messageInput.value) drafts.set(draftChatId, messageInput.value);
+  else drafts.delete(draftChatId);
+  draftChatId = chatId;
+  messageInput.value = drafts.get(chatId) ?? "";
+  handleInput();
+}
+
 function resizeInput() {
   messageInput.style.height = "auto";
   messageInput.style.height = `${messageInput.scrollHeight}px`;
@@ -71,6 +85,8 @@ async function handleSubmit(event) {
 }
 
 export function setupComposer() {
+  draftChatId = chatStore.getActiveChatId();
+  chatStore.subscribe("activeChatChanged", switchDraft);
   document.addEventListener("approval-wait-changed", updateSendButton);
   messageForm.addEventListener("submit", handleSubmit);
   messageInput.addEventListener("input", handleInput);

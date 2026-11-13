@@ -12,7 +12,7 @@ from fastapi.testclient import TestClient
 from src.backend import db
 from src.backend.chat import approvals, engine, model_slot, system_prompt
 from src.backend.chat.model_slot import ModelError
-from src.backend.chat_memory import activity, search
+from src.backend.chat_memory import activity, errors, search
 from src.backend.integrations import service, toolbox
 from src.backend.integrations.prerequisites import (
     Prerequisite,
@@ -392,6 +392,32 @@ def test_model_cannot_loop_forever(tools):
 
 def test_model_failure_is_shown(tools):
     events = run(FakeModel([{"type": "text", "text": "Hi"}, ModelError("out of memory")]))
+    assert events[-1] == {"type": "error", "message": "out of memory"}
+
+
+@pytest.fixture
+def saved_errors(monkeypatch):
+    saved = []
+
+    async def save(source, kind, message, attempted=None, conversation_id=None):
+        saved.append((source, kind, message, conversation_id))
+
+    monkeypatch.setattr(errors, "save", save)
+    return saved
+
+
+def test_model_failure_is_saved_for_learning(tools, saved_errors):
+    run(FakeModel([ModelError("out of memory")]))
+    assert saved_errors == [("chat", "ModelError", "out of memory", None)]
+
+
+def test_too_many_tool_rounds_is_saved_for_learning(tools, saved_errors):
+    run(FakeModel(*[[tool_call("Gmail__search_email")] for _ in range(engine.MAX_TOOL_ROUNDS)]))
+    assert saved_errors == [("chat", "TooManyToolRounds", engine.TOO_MANY_ROUNDS, None)]
+
+
+def test_an_error_that_cannot_be_saved_does_not_break_the_chat(tools):
+    events = run(FakeModel([ModelError("out of memory")]))
     assert events[-1] == {"type": "error", "message": "out of memory"}
 
 

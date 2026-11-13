@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import re
+import time
 from contextlib import asynccontextmanager
 
 import httpx
@@ -137,7 +138,8 @@ class Toolbox:
             return tool_name, f"Error: there is no tool called {tool_name}."
         arguments = read_arguments(arguments)
 
-        logger.info("Running tool %s", tool["label"])
+        logger.info("Running tool %s (%s) with %s", tool["label"], tool_name, json.dumps(arguments, ensure_ascii=False))
+        started = time.monotonic()
         try:
             result = await asyncio.wait_for(tool["handler"](arguments), TOOL_TIMEOUT)
         except asyncio.TimeoutError:
@@ -146,7 +148,15 @@ class Toolbox:
         except (McpError, httpx.HTTPError, OSError) as error:
             logger.warning("Tool %s failed: %s", tool["label"], error)
             result = f"Error: {error}"
-        return tool["label"], truncate(result)
+        result = truncate(result)
+        logger.info(
+            "Tool %s finished in %.0f ms: %s, %d characters back",
+            tool["label"],
+            (time.monotonic() - started) * 1000,
+            "error" if is_error_result(result) else "ok",
+            len(result),
+        )
+        return tool["label"], result
 
 
 def make_mcp_handler(session, tool_name):

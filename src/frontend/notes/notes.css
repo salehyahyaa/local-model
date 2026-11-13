@@ -195,9 +195,18 @@
   font: 15px/1.35 -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif;
   resize: none;
   outline: none;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
-.note-text::placeholder { color: rgba(0, 0, 0, 0.4); }
+.note-text:empty::before {
+  content: attr(data-placeholder);
+  color: rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+}
+
+.notes-format-button { font: 600 16px/1 Georgia, "Times New Roman", serif; }
+.notes-format-button b, .notes-format-button i { position: relative; }
 
 .note-footer {
   display: flex;

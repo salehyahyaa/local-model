@@ -1,6 +1,7 @@
 """Saves the owner's Telegram chats in the database, in the same conversations and messages as the web app."""
 
 from src.backend import db, store
+from src.backend.chat_memory import errors
 
 MAX_TITLE_CHARACTERS = 50
 
@@ -94,3 +95,8 @@ def answered_messages(messages):
         if question["role"] == "user" and reply["role"] == "assistant":
             kept += [question, reply]
     return kept
+
+
+async def save_error(kind, message, attempted, conversation_id=None):
+    await connected_pool()
+    await errors.save(errors.TELEGRAM, kind, message, attempted, conversation_id)

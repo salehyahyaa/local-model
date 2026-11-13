@@ -9,6 +9,7 @@ const MODEL_OPTIONS = [
     name: "Image Generation",
     description: "Edit any existing image",
     placeholder: "Describe an image...",
+    redDot: true,
   },
 ];
 
@@ -26,6 +27,13 @@ export function getSelectedModelId() {
   return selectedOptionId;
 }
 
+function createRedDot() {
+  const dot = document.createElement("span");
+  dot.className = "red-dot";
+  dot.setAttribute("aria-hidden", "true");
+  return dot;
+}
+
 function createMenuItem(option, selectedOption) {
   const isSelected = option === selectedOption;
   const item = document.createElement("button");
@@ -38,6 +46,7 @@ function createMenuItem(option, selectedOption) {
   details.className = "model-menu-item-details";
   const name = document.createElement("span");
   name.textContent = option.name;
+  if (option.redDot) name.append(" ", createRedDot());
   const description = document.createElement("span");
   description.className = "model-menu-item-description";
   description.textContent = option.description;
@@ -58,6 +67,7 @@ function createMenuItem(option, selectedOption) {
 function showOption(option) {
   selectedOptionId = option.id;
   nameLabel.textContent = option.name;
+  if (option.redDot) nameLabel.append(" ", createRedDot());
   messageInput.placeholder = option.placeholder;
   menu.replaceChildren(...MODEL_OPTIONS.map((menuOption) => createMenuItem(menuOption, option)));
 }

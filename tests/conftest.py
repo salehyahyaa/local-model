@@ -1,11 +1,14 @@
 import os
 import subprocess
 import sys
+import tempfile
 
 import pytest
 
 # Tests never read or write the real OS keychain; secrets come from environment variables only.
 os.environ["USE_KEYCHAIN"] = "0"
+# Tests never write into the real logs/app.log, which the owner reads to evaluate the model.
+os.environ["LOG_DIR"] = tempfile.mkdtemp(prefix="local-model-test-logs-")
 
 from tests.helpers import ROOT_DIR, find_free_port, reset_test_database, wait_for_port  # noqa: E402
 
